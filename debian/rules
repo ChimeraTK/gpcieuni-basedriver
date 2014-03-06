@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	:
+
+override_dh_auto_install:
+	dh_install upciedev_drv.c  pciedev_ioctl_exp.c  pciedev_remove_exp.c  pciedev_ufn.c pciedev_probe_exp.c   pciedev_rw_exp.c /usr/src/upciedev-1/
+	dh_install pciedev_ufn.h  pciedev_io.h  Makefile /usr/src/upciedev-1/
+	dh_install pciedev_io.h pciedev_ufn.h /usr/include/
+	dh_dkms

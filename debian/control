@@ -1,0 +1,16 @@
+Source: upciedev-dkms
+Section: contrib/kernel
+Priority: extra
+Maintainer: Ludwig Petrosyan <ludwig.petrosyan@desy.de>
+Build-Depends: debhelper (>= 7), dkms
+Standards-Version: 1.0.28
+
+Package: upciedev-dkms
+Architecture: all
+Depends: ${misc:Depends}, dkms
+Description: kernel module for pciedev
+ PCIExpress Device Driver for uTCA
+ .
+ This package contains the dkms sources. When installed, it will build
+ the module for your kernel.
+ DOOCS-EXTERN
