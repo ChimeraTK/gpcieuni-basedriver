@@ -62,16 +62,19 @@ typedef struct device_ioctrl_time device_ioctrl_time;
 
 /* Use 'o' as magic number */
 #define PCIEDOOCS_IOC                               '0'
-#define PCIEDEV_PHYSICAL_SLOT              _IOWR(PCIEDOOCS_IOC, 60, int)
-#define PCIEDEV_DRIVER_VERSION           _IOWR(PCIEDOOCS_IOC, 61, int)
-#define PCIEDEV_FIRMWARE_VERSION    _IOWR(PCIEDOOCS_IOC, 62, int)
-#define PCIEDEV_GET_DMA_TIME               _IOWR(PCIEDOOCS_IOC, 70, int)
-#define PCIEDEV_WRITE_DMA                     _IOWR(PCIEDOOCS_IOC, 71, int)
-#define PCIEDEV_READ_DMA                       _IOWR(PCIEDOOCS_IOC, 72, int)
-#define PCIEDEV_SET_IRQ                            _IOWR(PCIEDOOCS_IOC, 73, int)
+#define PCIEDEV_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
+#define PCIEDEV_DRIVER_VERSION          _IOWR(PCIEDOOCS_IOC, 61, int)
+#define PCIEDEV_FIRMWARE_VERSION        _IOWR(PCIEDOOCS_IOC, 62, int)
+#define PCIEDEV_GET_DMA_TIME            _IOWR(PCIEDOOCS_IOC, 70, int)
+#define PCIEDEV_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
+#define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
+#define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
+#define PCIEDEV_READ_KBUF_DMA           _IOWR(PCIEDOOCS_IOC, 74, int)
+#define PCIEDEV_READ_KRING_DMA          _IOWR(PCIEDOOCS_IOC, 75, int)
+#define PCIEDEV_GET_KRING_DMA           _IOWR(PCIEDOOCS_IOC, 76, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR 74
+#define PCIEDOOCS_IOC_DMA_MAXNR 77
 
 #endif

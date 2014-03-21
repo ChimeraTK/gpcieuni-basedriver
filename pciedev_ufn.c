@@ -4,6 +4,7 @@
 #include <linux/fs.h>	
 #include <linux/sched.h>
 
+#include "pciedev_buffer.h"
 #include "pciedev_ufn.h"
 
 int    pciedev_open_exp( struct inode *inode, struct file *filp )
@@ -15,6 +16,8 @@ int    pciedev_open_exp( struct inode *inode, struct file *filp )
     dev = container_of(inode->i_cdev, struct pciedev_dev, cdev);
     dev->dev_minor     = minor;
     filp->private_data  = dev; 
+    //printk(KERN_INFO "PCIEDEV_OPEN_EXP: dma handle: 0x%llx for buffer: 0x%lx\n", dev->dma_buffer.dma_handle, dev->dma_buffer.kaddr);
+    
     //printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d \n", current->comm, current->pid, minor);
     return 0;
 }
@@ -35,7 +38,8 @@ int    pciedev_release_exp(struct inode *inode, struct file *filp)
 }
 EXPORT_SYMBOL(pciedev_release_exp);
 
-int    pciedev_set_drvdata(struct pciedev_dev *dev, void *data)
+
+int pciedev_set_drvdata(struct pciedev_dev *dev, void *data)
 {
     if(!dev)
         return 1;
@@ -50,6 +54,53 @@ void *pciedev_get_drvdata(struct pciedev_dev *dev){
     return NULL;
 }
 EXPORT_SYMBOL(pciedev_get_drvdata);
+
+module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev)
+{
+    module_dev* mdev;
+    
+    PDEBUG("pciedev_create_drvdata( brd_num = %i)", brd_num);
+    
+    mdev = kzalloc(sizeof(module_dev), GFP_KERNEL);
+    if(!mdev) 
+    {
+        return -ENOMEM;
+    }
+    mdev->brd_num     = brd_num;
+    mdev->parent_dev  = pcidev;
+    
+    init_waitqueue_head(&mdev->waitDMA);
+    INIT_LIST_HEAD(&mdev->dma_bufferList);
+    spin_lock_init(&mdev->dma_bufferList_lock);
+    sema_init(&mdev->dma_sem, 1);
+    
+    // TODO: make number of blocks in buffer configurable
+    pciedev_block_add(mdev);
+    pciedev_block_add(mdev);
+    
+    return mdev;
+}
+EXPORT_SYMBOL(pciedev_create_drvdata);
+
+void pciedev_release_drvdata(module_dev* mdev)
+{
+    struct list_head     *pos;
+    struct list_head     *tpos;
+    struct pciedev_block *block;
+    
+    // clear the buffers
+    spin_lock(&mdev->dma_bufferList_lock);
+    list_for_each_safe(pos, tpos, &mdev->dma_bufferList){
+        block = list_entry(pos, struct pciedev_block, list);
+        list_del(pos);
+        pciedev_dma_free(mdev, block);
+        kfree(block);
+    }
+    spin_unlock(&mdev->dma_bufferList_lock);        
+    
+    kfree(mdev);
+}
+EXPORT_SYMBOL(pciedev_release_drvdata);
 
 int       pciedev_get_brdnum(struct pci_dev *dev)
 {

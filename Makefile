@@ -1,5 +1,5 @@
 upciedev-objs := upciedev_drv.o pciedev_ufn.o pciedev_probe_exp.o \
-	pciedev_remove_exp.o pciedev_rw_exp.o pciedev_ioctl_exp.o
+	pciedev_remove_exp.o pciedev_rw_exp.o pciedev_ioctl_exp.o pciedev_buffer.o
 obj-m := upciedev.o 
 
 KVERSION = $(shell uname -r)

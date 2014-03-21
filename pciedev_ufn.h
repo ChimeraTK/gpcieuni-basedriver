@@ -13,6 +13,17 @@
 #include <linux/types.h>	/* size_t */
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
+#include <linux/semaphore.h>
+
+#undef PDEBUG      
+// TODO: remove this
+#define PCIEDEV_DEBUG
+#ifdef PCIEDEV_DEBUG
+#define PDEBUG(fmt, args...) printk( KERN_DEBUG "scull: " fmt, ## args)
+#else
+#define PDEBUG(fmt, args...) 
+#endif
+
 
 #ifndef PCIEDEV_NR_DEVS
 #define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */
@@ -64,7 +75,7 @@ struct pciedev_prj_info {
 };
 typedef struct pciedev_prj_info pciedev_prj_info;
 
-struct pciedev_cdev ;
+struct pciedev_cdev;
 struct pciedev_dev {
    
     struct cdev         cdev;	  /* Char device structure      */
@@ -132,9 +143,10 @@ struct pciedev_dev {
     void                          *dev_str;
     
     struct pciedev_brd_info brd_info_list;
-    struct pciedev_prj_info  prj_info_list;
-    int                                 startup_brd;
-    int                                 startup_prj_num;
+    struct pciedev_prj_info prj_info_list;
+    int                     startup_brd;
+    int                     startup_prj_num;
+    
 };
 typedef struct pciedev_dev pciedev_dev;
 
@@ -152,6 +164,28 @@ struct pciedev_cdev {
     int                                   pciedevModuleNum;
 };
 typedef struct pciedev_cdev pciedev_cdev;
+
+struct module_dev {
+    int                 brd_num;
+    //    spinlock_t            irq_lock;
+    struct timeval      dma_start_time;
+    struct timeval      dma_stop_time;
+    int                 waitFlag;
+    u32                 dev_dma_size;
+    u32                 dma_page_num;
+    int                 dma_offset;
+    int                 dma_order;
+    wait_queue_head_t  waitDMA;
+    
+    struct list_head    dma_bufferList;      
+    spinlock_t          dma_bufferList_lock; 
+    struct semaphore    dma_sem;     
+    
+    struct pciedev_dev *parent_dev;
+};
+typedef struct module_dev module_dev;
+
+typedef struct pciedev_mem_map pciedev_mem_map;
 
 int        pciedev_open_exp( struct inode *, struct file * );
 int        pciedev_release_exp(struct inode *, struct file *);
@@ -172,6 +206,10 @@ int       pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev **, char *, int *
 int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
+
+module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev);
+void        pciedev_release_drvdata(module_dev* mdev);
+
 
 #if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
 int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *, struct pt_regs *), struct pciedev_dev *, char *);
