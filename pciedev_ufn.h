@@ -17,9 +17,9 @@
 
 #undef PDEBUG      
 // TODO: remove this
-#define PCIEDEV_DEBUG
+//#define PCIEDEV_DEBUG
 #ifdef PCIEDEV_DEBUG
-#define PDEBUG(fmt, args...) printk( KERN_DEBUG "scull: " fmt, ## args)
+#define PDEBUG(fmt, args...) printk( KERN_INFO "PCIEDEV: " fmt, ## args)
 #else
 #define PDEBUG(fmt, args...) 
 #endif
@@ -165,6 +165,8 @@ struct pciedev_cdev {
 };
 typedef struct pciedev_cdev pciedev_cdev;
 
+struct pciedev_cdev;
+
 struct module_dev {
     int                 brd_num;
     //    spinlock_t            irq_lock;
@@ -175,11 +177,16 @@ struct module_dev {
     u32                 dma_page_num;
     int                 dma_offset;
     int                 dma_order;
-    wait_queue_head_t  waitDMA;
+    wait_queue_head_t   waitDMA;
     
-    struct list_head    dma_bufferList;      
-    spinlock_t          dma_bufferList_lock; 
-    struct semaphore    dma_sem;     
+    struct list_head    dma_bufferList;
+    spinlock_t          dma_bufferList_lock;
+    int                 dma_bufferListCount;
+    struct semaphore    dma_sem;
+    wait_queue_head_t   buffer_waitQueue;
+    int                 buffer_waitFlag;
+    int                 buffer_nrRead;
+    struct pciedev_block*      dma_buffer;
     
     struct pciedev_dev *parent_dev;
 };
@@ -207,7 +214,7 @@ int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
 
-module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev);
+module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_blk_size, pciedev_dev* pcidev);
 void        pciedev_release_drvdata(module_dev* mdev);
 
 

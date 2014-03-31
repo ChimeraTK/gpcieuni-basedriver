@@ -51,6 +51,9 @@ struct device_ioctrl_dma  {
         u_int    dma_pattern;     // DMA BAR num
         u_int    dma_reserved1; // DMA Control register offset (31:16) DMA Length register offset (15:0)
         u_int    dma_reserved2; // DMA Read/Write Source register offset (31:16) Destination register offset (15:0)
+        
+        u_int    dbuf_offset;   // File offset of driver buffer used for DMA 
+        u_int    dbuf_size;     // Size of driver buffer used for DMA
 };
 typedef struct device_ioctrl_dma device_ioctrl_dma;
 
@@ -59,6 +62,13 @@ struct device_ioctrl_time  {
         struct timeval   stop_time;
 };
 typedef struct device_ioctrl_time device_ioctrl_time;
+
+struct device_ioctrl_kbuf_info  {
+    u_int num_blocks;
+    u_int block_size;
+};
+typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
+
 
 /* Use 'o' as magic number */
 #define PCIEDOOCS_IOC                               '0'
@@ -69,12 +79,15 @@ typedef struct device_ioctrl_time device_ioctrl_time;
 #define PCIEDEV_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
 #define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
 #define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
-#define PCIEDEV_READ_KBUF_DMA           _IOWR(PCIEDOOCS_IOC, 74, int)
-#define PCIEDEV_READ_KRING_DMA          _IOWR(PCIEDOOCS_IOC, 75, int)
-#define PCIEDEV_GET_KRING_DMA           _IOWR(PCIEDOOCS_IOC, 76, int)
+#define PCIEDEV_KBUF_INFO               _IOWR(PCIEDOOCS_IOC, 74, int)
+#define PCIEDEV_KBUF_READ_DMA           _IOWR(PCIEDOOCS_IOC, 75, int)
+#define PCIEDEV_REQUEST_READ_DMA        _IOWR(PCIEDOOCS_IOC, 76, int)
+#define PCIEDEV_WAIT_READ_DMA           _IOWR(PCIEDOOCS_IOC, 77, int)
+#define PCIEDEV_WAIT_MMAP_KBUF          _IOWR(PCIEDOOCS_IOC, 78, int)
+#define PCIEDEV_RELEASE_MMAP_KBUF       _IOWR(PCIEDOOCS_IOC, 79, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR 77
+#define PCIEDOOCS_IOC_DMA_MAXNR 80
 
 #endif

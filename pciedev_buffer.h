@@ -8,8 +8,9 @@
  */
 typedef struct pciedev_block {
     struct list_head    list;           /**< List entry struct. */
-    unsigned int        order;          /**< Memory block size in units of kernel page order. */
+    unsigned long       offset;         /**< Block offset in driver memory. */ 
     unsigned long       size;           /**< Memory block size in bytes */
+    unsigned int        order;          /**< Memory block size in units of kernel page order. */
     unsigned long       kaddr;          /**< Kernel virtual address of memory block. */
     dma_addr_t          dma_handle;     /**< Dma handle for memory block. */
     
@@ -21,10 +22,10 @@ typedef struct pciedev_block {
 typedef struct pciedev_block pciedev_block;
 
 
-int pciedev_dma_alloc(pciedev_dev *pciedev, pciedev_block *memblock);
+int pciedev_dma_alloc(pciedev_dev *pciedev, ulong blkSize, pciedev_block *memblock);
 void pciedev_dma_free(pciedev_dev *pciedev, pciedev_block *memblock);
 
-int pciedev_block_add(module_dev* mdev);
+int pciedev_block_add(module_dev* mdev, ulong blkSize);
 
 
 #endif /* PCIEDEV_BUFFER_H_ */
