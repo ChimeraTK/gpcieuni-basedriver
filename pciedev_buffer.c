@@ -54,6 +54,9 @@ int pciedev_dma_alloc(pciedev_dev *pciedev, ulong blkSize, pciedev_block *memblo
         printk(KERN_ERR "PCIEDEV_ALLOC: can't get free pages of order %u\n", order);
         return -ENOMEM;
     }
+    
+    // TODO: REMOVE this:
+    memset(memblock->kaddr, 0xAB, blkSize);
         
     memblock->order = order;
     memblock->size = 1 << (order + PAGE_SHIFT);

@@ -161,6 +161,11 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                     tmp_offset = (tmp_offset/sizeof(u32))*sizeof(u32);
                     tmp_data_32       = ioread32(address + tmp_offset);
                     rmb();
+                    
+                    // TODO: Remove this:
+                    PDEBUG("Reading from address 0x%lx: ", address + tmp_offset);
+                    print_hex_dump_bytes("PCIEDEV regRead:", DUMP_PREFIX_NONE, &tmp_data_32, 4);
+                    
                     reading.data_rw   = tmp_data_32 & 0xFFFFFFFF;
                     retval = itemsize;
                     break;
@@ -419,6 +424,10 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
             case RW_D32:
                 tmp_offset = (tmp_offset/sizeof(u32))*sizeof(u32);
                 iowrite32(tmp_data_32, ((void*)(address + tmp_offset)));
+                PDEBUG("Writng to address 0x%lx: ", address + tmp_offset);
+                // TODO: Remove this:
+                print_hex_dump_bytes("PCIEDEV regWrite:", DUMP_PREFIX_NONE, &tmp_data_32, 4);
+                
                 wmb();
                 retval = itemsize;                
                 break;
