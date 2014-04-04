@@ -71,32 +71,11 @@ EXPORT_SYMBOL(pciedev_get_pciedata);
 
 void*   pciedev_get_baddress(int br_num, struct pciedev_dev  *dev)
 {
-    void *tmp_address;
-    
-    tmp_address = 0;
-    switch(br_num){
-        case 0:
-            tmp_address = dev->memmory_base0;
-            break;
-        case 1:
-            tmp_address = dev->memmory_base0;
-            break;
-        case 2:
-            tmp_address = dev->memmory_base0;
-            break;
-        case 3:
-            tmp_address = dev->memmory_base0;
-            break;
-        case 4:
-            tmp_address = dev->memmory_base0;
-            break;
-        case 5:
-            tmp_address = dev->memmory_base0;
-            break;
-        default:
-            break;
+    if ( (br_num < 0) || (br_num >= PCIEDEV_N_BARS) ){
+      return NULL;
     }
-    return tmp_address;
+
+    return dev->memmory_base[br_num];
 }
 EXPORT_SYMBOL(pciedev_get_baddress);
 
@@ -130,8 +109,8 @@ int      pciedev_get_brdinfo(struct pciedev_dev  *bdev)
     u32  tmp_data_32;
     
     bdev->startup_brd = 0;
-    if(bdev->memmory_base0){ 
-        baddress = bdev->memmory_base0;
+    if(bdev->memmory_base[0]){ 
+        baddress = bdev->memmory_base[0];
         address = baddress;
         tmp_data_32       = ioread32(address );
         if(tmp_data_32 == ASCII_BOARD_MAGIC_NUM || tmp_data_32 ==ASCII_BOARD_MAGIC_NUM_L){
@@ -209,74 +188,46 @@ EXPORT_SYMBOL(pciedev_fill_prj_info);
 
 int      pciedev_get_prjinfo(struct pciedev_dev  *bdev)
 {
-    void *baddress;
-    void *address;
-    int   strbrd             = 0;
-    int  tmp_next_prj  = 0;
-    int  tmp_next_prj1 = 0;
+    void *address = NULL;
+    unsigned int nextProjectOffset = 0;
+    unsigned int bar = 0;
     
+    /* Set the number of projects found to 0 */
     bdev->startup_prj_num = 0;
-    tmp_next_prj =bdev->brd_info_list.PCIEDEV_PROJ_NEXT;
-    if(tmp_next_prj){
-        baddress = bdev->memmory_base0;
-        while(tmp_next_prj){
-            address = baddress + tmp_next_prj;
-            tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-        }
-    }else{
-        if(bdev->memmory_base1){ 
-            tmp_next_prj  = 1;
-            tmp_next_prj1 = 0;
-            baddress = bdev->memmory_base1;
-            while(tmp_next_prj){
-                tmp_next_prj  = tmp_next_prj1;
-                address = baddress + tmp_next_prj;
-                tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-            }
-        }
-        if(bdev->memmory_base2){ 
-            tmp_next_prj  = 1;
-            tmp_next_prj1 = 0;
-            baddress = bdev->memmory_base2;
-            while(tmp_next_prj){
-                tmp_next_prj  = tmp_next_prj1;
-                address = baddress + tmp_next_prj;
-                tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-            }
-        }
-        if(bdev->memmory_base3){ 
-            tmp_next_prj  = 1;
-            tmp_next_prj1 = 0;
-            baddress = bdev->memmory_base3;
-            while(tmp_next_prj){
-                tmp_next_prj  = tmp_next_prj1;
-                address = baddress + tmp_next_prj;
-                tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-            }
-        }
-        if(bdev->memmory_base4){ 
-            tmp_next_prj  = 1;
-            tmp_next_prj1 = 0;
-            baddress = bdev->memmory_base4;
-            while(tmp_next_prj){
-                tmp_next_prj  = tmp_next_prj1;
-                address = baddress + tmp_next_prj;
-                tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-            }
-        }
-        if(bdev->memmory_base5){ 
-            tmp_next_prj  = 1;
-            tmp_next_prj1 = 0;
-            baddress = bdev->memmory_base5;
-            while(tmp_next_prj){
-                tmp_next_prj  = tmp_next_prj1;
-                address = baddress + tmp_next_prj;
-                tmp_next_prj = pciedev_fill_prj_info(bdev, address);
-            }
-        }
+
+    /* Special treatment for BAR 0:
+       The first project in bar 0 is not at 0, but in the address contained at PCIEDEV_PROJ_NEXT
+       of the board header.*/
+    nextProjectOffset = bdev->brd_info_list.PCIEDEV_PROJ_NEXT;
+
+    /* Rejecting loop, first project is NOT at 0, and there might be none.*/
+    while(nextProjectOffset){
+      /* FIXME: This mixes pointers and integers. Increpenting a pointer with a uint might be OK, though. */
+      address = bdev->memmory_base[0] + nextProjectOffset;
+      nextProjectOffset = pciedev_fill_prj_info(bdev, address);
     }
-    strbrd = bdev->startup_prj_num;
-    return strbrd;
+
+    /* loop all bars for the next project */
+    for (bar=0; bar < PCIEDEV_N_BARS; ++bar){
+
+      /* only try to access the bar if it is implemented */
+      if(bdev->memmory_base[bar]){ 
+
+	/* Use a non-rejecting loop because the first project is at 0 (except for bar 0).
+	   This is safe if we assume that the bar is not empty. */
+	do{ 
+	  address = bdev->memmory_base[bar] + nextProjectOffset;
+	  nextProjectOffset = pciedev_fill_prj_info(bdev, nextProjectOffset);
+	  /* if the next project is 0 the loops exits, leaving the nextProjectOffset correclty
+	     initialised with 0 for the next BAR */
+
+	}while(nextProjectOffset);
+
+      }/* if bar is implemented */
+    }/* for (bar) */
+
+    /* return the number of projects found. */
+    return bdev->startup_prj_num;
 }
 EXPORT_SYMBOL(pciedev_get_prjinfo);
 

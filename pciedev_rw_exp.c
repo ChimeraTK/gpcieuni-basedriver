@@ -60,7 +60,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
              printk(KERN_ALERT "PCIEDEV_READ_EXP 3\n");
              retval = -EFAULT;
              mutex_unlock(&dev->dev_mut);
-             retval = 0;
+             retval = 0; /*FIXME this seems wrong here. copy to user failed, so this shoud return an error*/
              return retval;
         }
 
@@ -71,72 +71,22 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     tmp_barx     = reading.barx_rw;
     tmp_rsrvd_rw = reading.rsrvd_rw;
     tmp_size_rw  = reading.size_rw;
-    switch(tmp_barx){
-	case 0:
-	   if(!dev->memmory_base0){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address = (void *) dev->memmory_base0;
-	   mem_tmp = (dev->mem_base0_end -2);
-	   break;
-	case 1:
-	   if(!dev->memmory_base1){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address = (void *)dev->memmory_base1;
-	   mem_tmp = (dev->mem_base1_end -2);
-	   break;
-	case 2:
-	   if(!dev->memmory_base2){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	    }
-	   address = (void *)dev->memmory_base2;
-	   mem_tmp = (dev->mem_base2_end -2);
-	   break;
-        case 3:
-	   if(!dev->memmory_base3){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address = (void *) dev->memmory_base3;
-	   mem_tmp = (dev->mem_base3_end -2);
-	   break;
-	case 4:
-	   if(!dev->memmory_base4){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address = (void *)dev->memmory_base4;
-	   mem_tmp = (dev->mem_base4_end -2);
-	   break;
-	case 5:
-	   if(!dev->memmory_base5){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	    }
-	   address = (void *)dev->memmory_base5;
-	   mem_tmp = (dev->mem_base5_end -2);
-	   break;
-	default:
-	   if(!dev->memmory_base0){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address = (void *)dev->memmory_base0;
-	   mem_tmp = (dev->mem_base0_end -2);
-	   break;
-    }	
+    
+    if ( (tmp_barx < 0) || (tmp_barx >= PCIEDEV_N_BARS) ){
+       mutex_unlock(&dev->dev_mut);
+       return -EFAULT;
+    }
 
+    if(!dev->memmory_base[tmp_barx]){
+      mutex_unlock(&dev->dev_mut);
+      return -EFAULT;
+    }
+
+    address = (void *) dev->memmory_base[tmp_barx];
+    /* FIXME: WTF does the -2 do here? This is two bytes down, so in the middle of a 32 bit word! */
+    mem_tmp = (dev->mem_base_end[tmp_barx] -2);
+
+    /* again those 2. Is this a copy and paste artefact from some ancient 16 bit VME code? */
     if(tmp_size_rw < 2){
         if(tmp_offset > (mem_tmp -2) || (!address)){
               reading.data_rw   = 0;
@@ -165,22 +115,19 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                     retval = itemsize;
                     break;
                 default:
-                    tmp_offset = (tmp_offset/sizeof(u16))*sizeof(u16);
-                    tmp_data_16       = ioread16(address + tmp_offset);
-                    rmb();
-                    reading.data_rw   = tmp_data_16 & 0xFFFF;
-                    retval = itemsize;
-                    break;
+		  mutex_unlock(&dev->dev_mut);
+		  return -EFAULT;
               }
-          }
+	}
 
         if (copy_to_user(buf, &reading, count)) {
              retval = -EFAULT;
              mutex_unlock(&dev->dev_mut);
-             retval = 0;
+             retval = 0; /*FIXME this seems wrong here. copy to user failed, so this shoud return an error*/
+	     /* Jippeee, copy and pasting erros is fun */
              return retval;
         }
-    }else{
+    }else{ /*(tmp_size_rw < 2)*/
           switch(tmp_mode){
             case RW_D8:
                 if((tmp_offset + tmp_size_rw) > (mem_tmp -2) || (!address)){
@@ -195,7 +142,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                         if (copy_to_user((buf + i), &reading, 1)) {
                              retval = -EFAULT;
                              mutex_unlock(&dev->dev_mut);
-                             retval = 0;
+                             retval = 0;/* FIXME Jippeee, copy and pasting erros is fun */
                              return retval;
                         }
                     }
@@ -256,26 +203,13 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                 }
                 break;
             default:
-                if((tmp_offset + tmp_size_rw*2) > (mem_tmp -2) || (!address)){
-                      reading.data_rw   = 0;
-                      retval            = 0;
-                }else{
-                    for(i = 0; i< tmp_size_rw; i++){
-                        tmp_data_16       = ioread16(address + tmp_offset);
-                        rmb();
-                        reading.data_rw   = tmp_data_16 & 0xFFFF;
-                        retval = itemsize;
-                        if (copy_to_user((buf + i*2), &reading, 2)) {
-                             retval = -EFAULT;
-                             mutex_unlock(&dev->dev_mut);
-                             retval = 0;
-                             return retval;
-                        }
-                    }
-                }
-                break;
-          }
-    }
+	      mutex_unlock(&dev->dev_mut);
+	      return -EFAULT;
+
+          } /* switch(tmp_mode) */
+
+    }/* else (tmp_size_rw < 2) */
+
     mutex_unlock(&dev->dev_mut);
     return retval;
 }
@@ -327,75 +261,21 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
     tmp_rsrvd_rw = reading.rsrvd_rw;
     tmp_size_rw  = reading.size_rw;
     
-    switch(tmp_barx){
-        case 0:
-            if(!dev->memmory_base0){
-                printk(KERN_ALERT "NO MEM UNDER BAR0 \n");
-                retval = -EFAULT;
-                mutex_unlock(&dev->dev_mut);
-                return retval;
-            }
-            address    = (void *)dev->memmory_base0;
-            mem_tmp = (dev->mem_base0_end -2);
-            break;
-        case 1:
-            if(!dev->memmory_base1){
-                printk(KERN_ALERT "NO MEM UNDER BAR1 \n");
-                retval = -EFAULT;
-                mutex_unlock(&dev->dev_mut);
-                return retval;
-            }
-            address    = (void *)dev->memmory_base1;
-            mem_tmp = (dev->mem_base1_end -2);
-            break;
-        case 2:
-            if(!dev->memmory_base2){
-                printk(KERN_ALERT "NO MEM UNDER BAR2 \n");
-                retval = -EFAULT;
-                mutex_unlock(&dev->dev_mut);
-                return retval;
-            }
-            address    = (void *)dev->memmory_base2;
-            mem_tmp = (dev->mem_base2_end -2);
-            break;
-        case 3:
-	   if(!dev->memmory_base3){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address    = (void *) dev->memmory_base3;
-	   mem_tmp = (dev->mem_base3_end -2);
-	   break;
-	case 4:
-	   if(!dev->memmory_base4){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	   }
-	   address    = (void *)dev->memmory_base4;
-	   mem_tmp = (dev->mem_base4_end -2);
-	   break;
-	case 5:
-	   if(!dev->memmory_base5){
-	       retval = -EFAULT;
-	       mutex_unlock(&dev->dev_mut);
-	       return retval;
-	    }
-	   address    = (void *)dev->memmory_base5;
-	   mem_tmp = (dev->mem_base5_end -2);
-	   break;
-        default:
-            if(!dev->memmory_base0){
-                printk(KERN_ALERT "NO MEM UNDER BAR0 \n");
-                retval = -EFAULT;
-                mutex_unlock(&dev->dev_mut);
-                return retval;
-            }
-            address    = (void *)dev->memmory_base0;
-            mem_tmp = (dev->mem_base0_end -2);
-            break;
+    /* check that the bar number is valid */
+    if ( (tmp_barx < 0) || (tmp_barx >= PCIEDEV_N_BARS) ){
+       mutex_unlock(&dev->dev_mut);
+       return -EFAULT;
     }
+
+    /* check that the bar is in use */
+    if(!dev->memmory_base[tmp_barx]){
+      printk(KERN_ALERT "NO MEM UNDER BAR %u\n", tmp_barx);
+      mutex_unlock(&dev->dev_mut);
+      return -EFAULT;
+    }
+
+    address    = (void *)dev->memmory_base[tmp_barx];
+    mem_tmp = (dev->mem_base_end[tmp_barx] -2);
     
     if(tmp_offset > (mem_tmp -2) || (!address)){
         reading.data_rw   = 0;
@@ -423,12 +303,8 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
                 retval = itemsize;                
                 break;
             default:
-                tmp_offset = (tmp_offset/sizeof(u16))*sizeof(u16);
-                tmp_data_16 = tmp_data_32 & 0xFFFF;
-                iowrite16(tmp_data_16, ((void*)(address + tmp_offset)));
-                wmb();
-                retval = itemsize;
-                break;
+		mutex_unlock(&dev->dev_mut);
+		return -EFAULT;
         }
     }
     

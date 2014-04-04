@@ -14,6 +14,8 @@
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
 
+#include "pciedev_io.h"
+
 #ifndef PCIEDEV_NR_DEVS
 #define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */
 #endif
@@ -87,40 +89,15 @@ struct pciedev_dev {
     u32                      funcNumber;
     int                        bus_func;
     
-    u32    mem_base0;
-    u32    mem_base0_end;
-    u32    mem_base0_flag;
-    u32    mem_base1;
-    u32    mem_base1_end;
-    u32    mem_base1_flag;
-    u32    mem_base2;
-    u32    mem_base2_end;
-    u32    mem_base2_flag;
-    u32    mem_base3;
-    u32    mem_base3_end;
-    u32    mem_base3_flag;
-    u32    mem_base4;
-    u32    mem_base4_end;
-    u32    mem_base4_flag;
-    u32    mem_base5;
-    u32    mem_base5_end;
-    u32    mem_base5_flag;
-    loff_t  rw_off0;
-    loff_t  rw_off1;
-    loff_t  rw_off2;
-    loff_t  rw_off3;
-    loff_t  rw_off4;
-    loff_t  rw_off5;
+    u32    mem_base[PCIEDEV_N_BARS];
+    u32    mem_base_end[PCIEDEV_N_BARS];
+    u32    mem_base_flag[PCIEDEV_N_BARS];
+    loff_t  rw_off[PCIEDEV_N_BARS];
     int      dev_dma_64mask;
     int      pciedev_all_mems ;
     int      dev_payload_size;
-    void __iomem    *memmory_base0;
-    void __iomem    *memmory_base1;
-    void __iomem    *memmory_base2;
-    void __iomem    *memmory_base3;
-    void __iomem    *memmory_base4;
-    void __iomem    *memmory_base5;
-    
+    void __iomem * memmory_base[PCIEDEV_N_BARS];
+
     u8                         msi;
     int                         irq_flag;
     u16                       irq_mode;

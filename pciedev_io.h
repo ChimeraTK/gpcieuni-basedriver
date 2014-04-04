@@ -18,12 +18,7 @@
 #define IOCTRL_W     0x01
 #define IOCTRL_ALL  0x02
 
-#define BAR0 0
-#define BAR1 1
-#define BAR2 2
-#define BAR3 3
-#define BAR4 4
-#define BAR5 5
+#define PCIEDEV_N_BARS 6
 
 /* generic register access */
 struct device_rw  {

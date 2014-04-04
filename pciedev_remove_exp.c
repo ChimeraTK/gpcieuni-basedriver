@@ -16,6 +16,7 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
      char                f_name[64];
      char                prc_entr[64];
      dev_t              devno ;
+     unsigned int bar;
      
      struct list_head *pos;
      struct list_head *npos;
@@ -63,55 +64,18 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
      
     printk(KERN_ALERT "REMOVE: UNMAPPING MEMORYs\n");
     mutex_lock_interruptible(&pciedevdev->dev_mut);
-                    
-    if(pciedevdev->memmory_base0){
-       pci_iounmap(dev, pciedevdev->memmory_base0);
-       pciedevdev->memmory_base0  = 0;
-       pciedevdev->mem_base0      = 0;
-       pciedevdev->mem_base0_end  = 0;
-       pciedevdev->mem_base0_flag = 0;
-       pciedevdev->rw_off0         = 0;
-    }
-    if(pciedevdev->memmory_base1){
-       pci_iounmap(dev, pciedevdev->memmory_base1);
-       pciedevdev->memmory_base1  = 0;
-       pciedevdev->mem_base1      = 0;
-       pciedevdev->mem_base1_end  = 0;
-       pciedevdev->mem_base1_flag = 0;
-       pciedevdev->rw_off1        = 0;
-    }
-    if(pciedevdev->memmory_base2){
-       pci_iounmap(dev, pciedevdev->memmory_base2);
-       pciedevdev->memmory_base2  = 0;
-       pciedevdev->mem_base2      = 0;
-       pciedevdev->mem_base2_end  = 0;
-       pciedevdev->mem_base2_flag = 0;
-       pciedevdev->rw_off2        = 0;
-    }
-    if(pciedevdev->memmory_base3){
-       pci_iounmap(dev, pciedevdev->memmory_base3);
-       pciedevdev->memmory_base3  = 0;
-       pciedevdev->mem_base3      = 0;
-       pciedevdev->mem_base3_end  = 0;
-       pciedevdev->mem_base3_flag = 0;
-       pciedevdev->rw_off3         = 0;
-    }
-    if(pciedevdev->memmory_base4){
-       pci_iounmap(dev, pciedevdev->memmory_base4);
-       pciedevdev->memmory_base4  = 0;
-       pciedevdev->mem_base4      = 0;
-       pciedevdev->mem_base4_end  = 0;
-       pciedevdev->mem_base4_flag = 0;
-       pciedevdev->rw_off4        = 0;
-    }
-    if(pciedevdev->memmory_base5){
-       pci_iounmap(dev, pciedevdev->memmory_base5);
-       pciedevdev->memmory_base5  = 0;
-       pciedevdev->mem_base5      = 0;
-       pciedevdev->mem_base5_end  = 0;
-       pciedevdev->mem_base5_flag = 0;
-       pciedevdev->rw_off5        = 0;
-    }
+
+    for (bar = 0; bar < PCIEDEV_N_BARS; ++bar){
+      if(pciedevdev->memmory_base[bar]){
+       pci_iounmap(dev, pciedevdev->memmory_base[bar]);
+       pciedevdev->memmory_base[bar]  = 0;
+       pciedevdev->mem_base[bar]      = 0;
+       pciedevdev->mem_base_end[bar]  = 0;
+       pciedevdev->mem_base_flag[bar] = 0;
+       pciedevdev->rw_off[bar]        = 0;
+      }
+    }// for (bar)
+
     pci_release_regions((pciedevdev->pciedev_pci_dev));
     mutex_unlock(&pciedevdev->dev_mut);
     printk(KERN_INFO "PCIEDEV_REMOVE:  DESTROY DEVICE MAJOR %i MINOR %i\n",

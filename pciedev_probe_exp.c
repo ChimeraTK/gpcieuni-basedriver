@@ -179,6 +179,9 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     dev_payload &=0x0003;
     printk(KERN_ALERT "DAMC_PROBE: DEVICE CAP  %X\n",dev_payload);
 
+    /* FIXME: How about
+       tmp_payload_size = 128 << dev_payload;
+    */
     switch(dev_payload){
         case 0:
                    tmp_payload_size = 128;
@@ -247,118 +250,57 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     m_pciedev_dev_p->irq_pin        = irq_pin;
     
     /*******SETUP BARs******/
-    res_start  = pci_resource_start(dev, 0);
-    res_end    = pci_resource_end(dev, 0);
-    res_flag   = pci_resource_flags(dev, 0);
-    m_pciedev_dev_p->mem_base0       = res_start;
-    m_pciedev_dev_p->mem_base0_end   = res_end;
-    m_pciedev_dev_p->mem_base0_flag  = res_flag;
-    if(res_start){
-        m_pciedev_dev_p->memmory_base0 = pci_iomap(dev, 0, (res_end - res_start));
-        printk(KERN_INFO "PCIEDEV_PROBE: mem_region 0 address %X  SIZE %X FLAG %X\n",
-                       res_start, (res_end - res_start),
-                                                               m_pciedev_dev_p->mem_base0_flag);
-        m_pciedev_dev_p->rw_off0 = (res_end - res_start);
-        m_pciedev_dev_p->pciedev_all_mems = 1;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base0 = 0;
-      m_pciedev_dev_p->rw_off0       = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE0 address\n");
-    }
+    { /* Trick: open a new scope so we don't pollute the rest of the code with a loop counter,
+         plus the definition is closer to the place where it is used.*/
+      unsigned int bar;
 
-    res_start   = pci_resource_start(dev, 1);
-    res_end     = pci_resource_end(dev, 1);
-    res_flag    = pci_resource_flags(dev, 1);
-    m_pciedev_dev_p->mem_base1       = res_start;
-    m_pciedev_dev_p->mem_base1_end   = res_end;
-    m_pciedev_dev_p->mem_base1_flag  = res_flag;
-    if(res_start){
-       m_pciedev_dev_p->memmory_base1 = pci_iomap(dev, 1, (res_end - res_start));
-       printk(KERN_INFO "PCIEDEV: mem_region 1 address %X \n", res_start);
-       m_pciedev_dev_p->rw_off1= (res_end - res_start);
-       m_pciedev_dev_p->pciedev_all_mems +=2;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base1 = 0;
-      m_pciedev_dev_p->rw_off1       = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE1 address\n");
-    }
+      for (bar = 0; bar < PCIEDEV_N_BARS; ++bar){
+	res_start  = pci_resource_start(dev, bar);
+	res_end    = pci_resource_end(dev, bar);
+	res_flag   = pci_resource_flags(dev, bar);
+	m_pciedev_dev_p->mem_base[bar]       = res_start;
+	m_pciedev_dev_p->mem_base_end[bar]   = res_end;
+	m_pciedev_dev_p->mem_base_flag[bar]  = res_flag;
 
-    res_start  = pci_resource_start(dev, 2);
-    res_end    = pci_resource_end(dev, 2);
-    res_flag   = pci_resource_flags(dev, 2);
-    m_pciedev_dev_p->mem_base2       = res_start;
-    m_pciedev_dev_p->mem_base2_end   = res_end;
-    m_pciedev_dev_p->mem_base2_flag  = res_flag;
-    if(res_start){
-       m_pciedev_dev_p->memmory_base2 = pci_iomap(dev, 2, (res_end - res_start));
-       printk(KERN_INFO "PCIEDEV: mem_region 2 address %X \n", res_start);
-        m_pciedev_dev_p->rw_off2= (res_end - res_start);
-        m_pciedev_dev_p->pciedev_all_mems += 4;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base2 = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE2 address\n");
-    }
+	if(res_start){
+	  m_pciedev_dev_p->memmory_base[bar] = pci_iomap(dev, bar, (res_end - res_start));
+	  printk(KERN_INFO "PCIEDEV_PROBE: mem_region %u address %X  SIZE %X FLAG %X\n",
+		           bar, res_start, (res_end - res_start), res_flag);
 
-    res_start  = pci_resource_start(dev, 3);
-    res_end    = pci_resource_end(dev, 3);
-    res_flag   = pci_resource_flags(dev, 3);
-    m_pciedev_dev_p->mem_base3       = res_start;
-    m_pciedev_dev_p->mem_base3_end   = res_end;
-    m_pciedev_dev_p->mem_base3_flag  = res_flag;
-    if(res_start){
-        m_pciedev_dev_p->memmory_base3 = pci_iomap(dev, 3, (res_end - res_start));
-        printk(KERN_INFO "PCIEDEV: mem_region 3 address %X end %X SIZE %X FLAG %X\n",
-                       res_start, res_end, (res_end - res_start),
-                                                               m_pciedev_dev_p->mem_base3_flag);
-        m_pciedev_dev_p->rw_off3 = (res_end - res_start);
-        m_pciedev_dev_p->pciedev_all_mems += 8;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base3 = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE3 address\n");
-    }
+	  /* FIXME: Why is rw_off the size? */
+	  m_pciedev_dev_p->rw_off[bar] = (res_end - res_start);
 
-    res_start   = pci_resource_start(dev, 4);
-    res_end     = pci_resource_end(dev, 4);
-    res_flag    = pci_resource_flags(dev, 4);
-    m_pciedev_dev_p->mem_base4       = res_start;
-    m_pciedev_dev_p->mem_base4_end   = res_end;
-    m_pciedev_dev_p->mem_base4_flag  = res_flag;
-    if(res_start){
-       m_pciedev_dev_p->memmory_base4 = pci_iomap(dev, 4, (res_end - res_start));
-       printk(KERN_INFO "PCIEDEV: mem_region 4 address %X \n",  res_start);
-       m_pciedev_dev_p->rw_off4= (res_end - res_start);
-       m_pciedev_dev_p->pciedev_all_mems +=16;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base4 = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE4 address\n");
-    }
+	  /* FIXME: What is all_mems, and why to we add something like this?
+	     Could it be a bit-field and what really was ment is
+	     pciedev_all_mems |= (0x1 << bar);
+	  */
+	  switch(bar){
+	  case 0: m_pciedev_dev_p->pciedev_all_mems = 1;
+	    break;
+	  case 1: m_pciedev_dev_p->pciedev_all_mems += 2;
+	    break;
+	  case 2: m_pciedev_dev_p->pciedev_all_mems += 4;
+	    break;
+	  case 3: m_pciedev_dev_p->pciedev_all_mems += 8;
+	    break;
+	  case 4: m_pciedev_dev_p->pciedev_all_mems += 16;
+	    break;
+	  case 5: m_pciedev_dev_p->pciedev_all_mems += 32;
+	    break;
+	    /* no reasonable default statement possible, and all cases covered */
+	  }/* switch (bar) */
 
-    res_start  = pci_resource_start(dev, 5);
-    res_end    = pci_resource_end(dev, 5);
-    res_flag   = pci_resource_flags(dev, 5);
-    m_pciedev_dev_p->mem_base5       = res_start;
-    m_pciedev_dev_p->mem_base5_end   = res_end;
-    m_pciedev_dev_p->mem_base5_flag  = res_flag;
-    if(res_start){
-       m_pciedev_dev_p->memmory_base5 = pci_iomap(dev, 5, (res_end - res_start));
-       printk(KERN_INFO "PCIEDEV: mem_region 5 address %X \n",   res_start);
-        m_pciedev_dev_p->rw_off5= (res_end - res_start);
-        m_pciedev_dev_p->pciedev_all_mems += 32;
-    }
-    else{
-      m_pciedev_dev_p->memmory_base5 = 0;
-      printk(KERN_INFO "PCIEDEV: NO BASE5 address\n");
-    }
-    if(!m_pciedev_dev_p->pciedev_all_mems){
-        printk(KERN_ALERT "PROBE ERROR NO BASE_MEMs\n");
-    }
+	}// if(res_start)
+	else{
+	  m_pciedev_dev_p->memmory_base[bar] = 0;
+	  m_pciedev_dev_p->rw_off[bar]       = 0;
+	  printk(KERN_INFO "PCIEDEV: NO BASE%u address\n", bar);
+	}
 
-    /******GET BRD INFO******/
+      }/* for (bar) */
+    }/* scope of the bar counter 
+
+    /******GET BOARD INFO******/
     tmp_info = pciedev_get_brdinfo(m_pciedev_dev_p);
     printk(KERN_ALERT "$$$$$$$$$$$$$PROBE  IS STARTUP BOARD %i\n", tmp_info);
     if(tmp_info){
