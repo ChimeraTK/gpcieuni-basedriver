@@ -5,6 +5,8 @@
 #include "pciedev_ufn.h"
 #include "pciedev_io.h"
 
+#define MINIMUM( A, B ) ( A < B ? A : B )
+
 ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     u64        itemsize       = 0;
@@ -58,10 +60,8 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
         retval            = itemsize;
         if (copy_to_user(buf, &reading, count)) {
              printk(KERN_ALERT "PCIEDEV_READ_EXP 3\n");
-             retval = -EFAULT;
              mutex_unlock(&dev->dev_mut);
-             retval = 0; /*FIXME this seems wrong here. copy to user failed, so this shoud return an error*/
-             return retval;
+             return -EFAULT;
         }
 
         mutex_unlock(&dev->dev_mut);
@@ -72,11 +72,14 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     tmp_rsrvd_rw = reading.rsrvd_rw;
     tmp_size_rw  = reading.size_rw;
     
+    /* Check that the bar is valid */
+    /*FIXME: The bar should not be the DMA bar!*/
     if ( (tmp_barx < 0) || (tmp_barx >= PCIEDEV_N_BARS) ){
        mutex_unlock(&dev->dev_mut);
        return -EFAULT;
     }
 
+    /* Check that the bar is actually implemented on the board */
     if(!dev->memmory_base[tmp_barx]){
       mutex_unlock(&dev->dev_mut);
       return -EFAULT;
@@ -88,6 +91,12 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
 
     /* again those 2. Is this a copy and paste artefact from some ancient 16 bit VME code? */
     if(tmp_size_rw < 2){
+                                     /* address is the base address, and we checked above that it is valid,
+					so the !address branch will nerver be valid */
+                        /* So we are comparing to (bar_end-2)-2 = bar_end-4.
+                           Well, this is safe in 1 word mode, but too resictive. One cannot read the last word in 
+			   16 bit and the last 4 words in 8 bit mode */
+      /* FIXME!!!: ALERT!!! tmp_offset is relative, mem_tmp is absolute! */
         if(tmp_offset > (mem_tmp -2) || (!address)){
               reading.data_rw   = 0;
               retval            = 0;
@@ -168,13 +177,24 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                 }
                 break;
             case RW_D32:
-                if((tmp_offset + tmp_size_rw*4) > (mem_tmp -2) || (!address)){
+	      /* The comparison with mem_tmp -2 is to restrictive. The correct comparison is 
+		 > bar_end.
+		 Example: 1024 bytes bar size. Requested transfer size: 256 words = 1024 bytes (ok)
+		 bar_end = 1024 (?? is this end? or is it 1023?)
+		 tmp_size = 1022 (or 1021)
+		 tmp_size -2 = 1020 (or 1019)
+		 Whatever, it's too small.
+	      */
+		 
+	      /* FIXME!!! ALERT!!! bar_end and mem_tmp are absolute, tmp_offset is relative! */
+	      if((tmp_offset + tmp_size_rw*4) > (mem_tmp -2) || (!address)){
                       printk(KERN_ALERT "NO READ SIZE MORE THAN MEM \n");
+		      // this is wrong, should return as much as possible.
                       reading.data_rw   = 0;
-                      retval            = 0;
+                      retval            = 0; 
                 }else{
-                    
-                    for(i = 0; i< tmp_size_rw; i++){
+		/*
+		  for(i = 0; i< tmp_size_rw; i++){
                         tmp_data_32       = ioread32(address + tmp_offset + i*4);
                         rmb();
                         retval = itemsize;
@@ -185,6 +205,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                              return retval;
                         }
                     }
+		*/
 /*
                      //pDataBuf = (void *)__get_free_page(GFP_KERNEL | GFP_ATOMIC);
                      pDataBuf = (void *)__get_free_page(GFP_KERNEL );
@@ -199,7 +220,34 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                         }
                      free_page((ulong)pDataBuf);
 */
+
+		    /* Martin's brain storming:
+		       We divide into pages. The max. PCIe transfer size is 512 32-bit words = 4k, which is a usual page size. */
+		    unsigned int nWordsTransferred = 0;
+		    unsigned int nWordsMaxPerTransfer = PAGE_SIZE / sizeof(u32);
+		    unsigned int nWordsToBeTransferred = tmp_size_rw; /* FIXME: just a renamer, do this consistently in the whole function */
+
+		    void * kernelBuffer = (void *)__get_free_page(GFP_KERNEL );
+		    if (!kernelBuffer){
+		      retval = -EFAULT;
+		      break;
+		    }
+		    
+		    while ( nWordsTransferred < nWordsToBeTransferred ){
+		      unsigned int nWordsInThisTranfer = MINIMUM( nWordsMaxPerTransfer, nWordsToBeTransferred-nWordsTransferred );
+		      ioread32_rep(address + tmp_offset + nWordsTransferred*sizeof(u32) ,  
+				   kernelBuffer, nWordsInThisTranfer );
+		      if (copy_to_user((void*)buf , kernelBuffer, nWordsInThisTranfer*sizeof(u32))) {
+			     break;
+		      }
+
+		      nWordsTransferred += nWordsInThisTranfer;		      
+		    }
+		    
+		    /* clean up after the transfer (FIXME: allocate one page at driver start?) */
+		    free_page( (unsigned long)kernelBuffer );
                      
+		    retval = nWordsTransferred*sizeof(u32);
                 }
                 break;
             default:
