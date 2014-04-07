@@ -26,7 +26,6 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     u32        tmp_data_32;
     device_rw  reading;
     void*       address;
-    void*      pDataBuf          = 0;
     
     struct pciedev_dev *dev = filp->private_data;
     minor = dev->dev_minor;
@@ -40,10 +39,13 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
 
     itemsize = sizeof(device_rw);
 
+    printk("This is read_exp\n");
+
     if (mutex_lock_interruptible(&dev->dev_mut)){
                     return -ERESTARTSYS;
     }
-    if (copy_from_user(&reading, buf, count)) {
+    if (copy_from_user(&reading, buf, sizeof(device_rw))) {
+            printk("cannot copy from user\n");
             retval = -EFAULT;
             mutex_unlock(&dev->dev_mut);
             return retval;
@@ -58,7 +60,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
         reading.barx_rw   = dev->pciedev_all_mems;
         reading.size_rw   = dev->slot_num; /*SLOT NUM*/
         retval            = itemsize;
-        if (copy_to_user(buf, &reading, count)) {
+        if (copy_to_user(buf, &reading, sizeof(device_rw))) {
              printk(KERN_ALERT "PCIEDEV_READ_EXP 3\n");
              mutex_unlock(&dev->dev_mut);
              return -EFAULT;
@@ -75,12 +77,14 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     /* Check that the bar is valid */
     /*FIXME: The bar should not be the DMA bar!*/
     if ( (tmp_barx < 0) || (tmp_barx >= PCIEDEV_N_BARS) ){
+      printk("Wrong bar number %i\n", tmp_barx);
        mutex_unlock(&dev->dev_mut);
        return -EFAULT;
     }
 
     /* Check that the bar is actually implemented on the board */
     if(!dev->memmory_base[tmp_barx]){
+      printk("Bar not in use\n");
       mutex_unlock(&dev->dev_mut);
       return -EFAULT;
     }
@@ -90,7 +94,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     mem_tmp = (dev->mem_base_end[tmp_barx] -2);
 
     /* again those 2. Is this a copy and paste artefact from some ancient 16 bit VME code? */
-    if(tmp_size_rw < 2){
+    if(tmp_size_rw < 2){ printk("read size smaller than 2 \n" );
                                      /* address is the base address, and we checked above that it is valid,
 					so the !address branch will nerver be valid */
                         /* So we are comparing to (bar_end-2)-2 = bar_end-4.
@@ -129,7 +133,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
               }
 	}
 
-        if (copy_to_user(buf, &reading, count)) {
+        if (copy_to_user(buf, &reading, sizeof(device_rw))) {
              retval = -EFAULT;
              mutex_unlock(&dev->dev_mut);
              retval = 0; /*FIXME this seems wrong here. copy to user failed, so this shoud return an error*/
@@ -137,6 +141,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
              return retval;
         }
     }else{ /*(tmp_size_rw < 2)*/
+          printk("read size larger 2 (requested: %i)\n",tmp_size_rw );
           switch(tmp_mode){
             case RW_D8:
                 if((tmp_offset + tmp_size_rw) > (mem_tmp -2) || (!address)){
@@ -229,16 +234,20 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
 
 		    void * kernelBuffer = (void *)__get_free_page(GFP_KERNEL );
 		    if (!kernelBuffer){
+                      printk(KERN_ALERT "Could not allocate one page in the kernel \n");
 		      retval = -EFAULT;
 		      break;
 		    }
 		    
 		    while ( nWordsTransferred < nWordsToBeTransferred ){
 		      unsigned int nWordsInThisTranfer = MINIMUM( nWordsMaxPerTransfer, nWordsToBeTransferred-nWordsTransferred );
-		      ioread32_rep(address + tmp_offset + nWordsTransferred*sizeof(u32) ,  
-				   kernelBuffer, nWordsInThisTranfer );
+		      memcpy_fromio(kernelBuffer, address + tmp_offset + nWordsTransferred*sizeof(u32),  
+				    nWordsInThisTranfer );
+		      printk("address %llx offset %x nWordsTransferred %u nWordsInThisTransfer %u nWordsToBeTransferred %u \n",
+			     (unsigned long long)address, tmp_offset, nWordsTransferred, nWordsInThisTranfer, nWordsToBeTransferred);
 		      if (copy_to_user((void*)buf , kernelBuffer, nWordsInThisTranfer*sizeof(u32))) {
-			     break;
+			printk(KERN_ALERT "Could not copy to user \n");
+			break;
 		      }
 
 		      nWordsTransferred += nWordsInThisTranfer;		      
@@ -251,6 +260,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                 }
                 break;
             default:
+	      printk(KERN_ALERT "Invalid read mode.\n");	      
 	      mutex_unlock(&dev->dev_mut);
 	      return -EFAULT;
 
