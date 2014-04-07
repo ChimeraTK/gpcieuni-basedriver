@@ -69,6 +69,8 @@ module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_
     }
     mdev->brd_num     = brd_num;
     mdev->parent_dev  = pcidev;
+
+    mdev->dma_workqueue =  create_singlethread_workqueue("dma_workqueue");
     
     init_waitqueue_head(&mdev->waitDMA);
     init_waitqueue_head(&mdev->buffer_waitQueue);
@@ -116,6 +118,11 @@ void pciedev_release_drvdata(module_dev* mdev)
         wake_up_interruptible(&(mdev->buffer_waitQueue));
         
         spin_unlock(&mdev->dma_bufferList_lock);        
+        
+        if (mdev->dma_workqueue) 
+        {
+            destroy_workqueue(mdev->dma_workqueue);
+        }
         
         // TODO: should not free until sleepers are done?!
         kfree(mdev);

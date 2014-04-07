@@ -85,9 +85,10 @@ typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
 #define PCIEDEV_WAIT_READ_DMA           _IOWR(PCIEDOOCS_IOC, 77, int)
 #define PCIEDEV_WAIT_MMAP_KBUF          _IOWR(PCIEDOOCS_IOC, 78, int)
 #define PCIEDEV_RELEASE_MMAP_KBUF       _IOWR(PCIEDOOCS_IOC, 79, int)
+#define PCIEDEV_KRING_READ_DMA          _IOWR(PCIEDOOCS_IOC, 80, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR 80
+#define PCIEDOOCS_IOC_DMA_MAXNR 81
 
 #endif

@@ -14,6 +14,9 @@
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
 #include <linux/semaphore.h>
+#include <linux/workqueue.h>
+
+#include "pciedev_io.h"
 
 #undef PDEBUG      
 // TODO: remove this
@@ -178,6 +181,10 @@ struct module_dev {
     int                 dma_offset;
     int                 dma_order;
     wait_queue_head_t   waitDMA;
+    
+    struct workqueue_struct* dma_workqueue;
+    struct work_struct       dma_work;
+    struct device_ioctrl_dma dma_workData;
     
     struct list_head    dma_bufferList;
     spinlock_t          dma_bufferList_lock;
