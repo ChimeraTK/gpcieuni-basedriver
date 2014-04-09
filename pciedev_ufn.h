@@ -89,14 +89,11 @@ struct pciedev_dev {
     u32                      funcNumber;
     int                        bus_func;
     
-    u32    mem_base[PCIEDEV_N_BARS];
-    u32    mem_base_end[PCIEDEV_N_BARS];
-    u32    mem_base_flag[PCIEDEV_N_BARS];
-    loff_t  rw_off[PCIEDEV_N_BARS];
     int      dev_dma_64mask;
     int      pciedev_all_mems ;
     int      dev_payload_size;
-    void __iomem * memmory_base[PCIEDEV_N_BARS];
+    void __iomem * memory_base[PCIEDEV_N_BARS];
+    resource_size_t bar_length[PCIEDEV_N_BARS];
 
     u8                         msi;
     int                         irq_flag;
