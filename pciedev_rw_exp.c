@@ -82,16 +82,15 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
        return -EFAULT;
     }
 
-    /* Check that the bar is actually implemented on the board */
-    if(!dev->memmory_base[tmp_barx]){
+    if(!dev->memory_base[tmp_barx]){
       printk("Bar not in use\n");
       mutex_unlock(&dev->dev_mut);
       return -EFAULT;
     }
 
-    address = (void *) dev->memmory_base[tmp_barx];
+    address = (void *) dev->memory_base[tmp_barx];
     /* FIXME: WTF does the -2 do here? This is two bytes down, so in the middle of a 32 bit word! */
-    mem_tmp = (dev->mem_base_end[tmp_barx] -2);
+    mem_tmp = (dev->bar_length[tmp_barx] -2);
 
     /* again those 2. Is this a copy and paste artefact from some ancient 16 bit VME code? */
     if(tmp_size_rw < 2){ printk("read size smaller than 2 \n" );
@@ -326,14 +325,14 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
     }
 
     /* check that the bar is in use */
-    if(!dev->memmory_base[tmp_barx]){
+    if(!dev->memory_base[tmp_barx]){
       printk(KERN_ALERT "NO MEM UNDER BAR %u\n", tmp_barx);
       mutex_unlock(&dev->dev_mut);
       return -EFAULT;
     }
 
-    address    = (void *)dev->memmory_base[tmp_barx];
-    mem_tmp = (dev->mem_base_end[tmp_barx] -2);
+    address    = (void *)dev->memory_base[tmp_barx];
+    mem_tmp = (dev->bar_length[tmp_barx] -2);
     
     if(tmp_offset > (mem_tmp -2) || (!address)){
         reading.data_rw   = 0;

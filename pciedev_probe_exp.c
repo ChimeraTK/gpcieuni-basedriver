@@ -25,9 +25,6 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     u8  revision;
     u8  irq_line;
     u8  irq_pin;
-    u32 res_start;
-    u32 res_end;
-    u32 res_flag;
     int pcie_cap;
     u32 tmp_slot_cap     = 0;
     int tmp_slot_num     = 0;
@@ -255,20 +252,14 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
       unsigned int bar;
 
       for (bar = 0; bar < PCIEDEV_N_BARS; ++bar){
-	res_start  = pci_resource_start(dev, bar);
-	res_end    = pci_resource_end(dev, bar);
-	res_flag   = pci_resource_flags(dev, bar);
-	m_pciedev_dev_p->mem_base[bar]       = res_start;
-	m_pciedev_dev_p->mem_base_end[bar]   = res_end;
-	m_pciedev_dev_p->mem_base_flag[bar]  = res_flag;
 
-	if(res_start){
-	  m_pciedev_dev_p->memmory_base[bar] = pci_iomap(dev, bar, (res_end - res_start));
-	  printk(KERN_INFO "PCIEDEV_PROBE: mem_region %u address %X  SIZE %X FLAG %X\n",
-		           bar, res_start, (res_end - res_start), res_flag);
+	if(pci_resource_start(dev, bar)){
+	  m_pciedev_dev_p->memory_base[bar] = pci_iomap(dev, bar, pci_resource_len(dev, bar));
+	  printk(KERN_INFO "PCIEDEV_PROBE: mem_region %u address %LX  SIZE %LX FLAGS %lX\n",
+		 bar, pci_resource_start(dev, bar), pci_resource_len(dev, bar),
+		 pci_resource_flags(dev, bar));
 
-	  /* FIXME: Why is rw_off the size? */
-	  m_pciedev_dev_p->rw_off[bar] = (res_end - res_start);
+	  m_pciedev_dev_p->bar_length[bar] =  pci_resource_len(dev, bar);
 
 	  /* FIXME: What is all_mems, and why to we add something like this?
 	     Could it be a bit-field and what really was ment is
@@ -292,13 +283,13 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
 
 	}// if(res_start)
 	else{
-	  m_pciedev_dev_p->memmory_base[bar] = 0;
-	  m_pciedev_dev_p->rw_off[bar]       = 0;
+	  m_pciedev_dev_p->memory_base[bar] = 0;
+	  m_pciedev_dev_p->bar_length[bar]       = 0;
 	  printk(KERN_INFO "PCIEDEV: NO BASE%u address\n", bar);
 	}
 
       }/* for (bar) */
-    }/* scope of the bar counter 
+    }/* scope of the bar counter */
 
     /******GET BOARD INFO******/
     tmp_info = pciedev_get_brdinfo(m_pciedev_dev_p);

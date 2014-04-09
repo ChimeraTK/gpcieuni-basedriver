@@ -66,13 +66,10 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
     mutex_lock_interruptible(&pciedevdev->dev_mut);
 
     for (bar = 0; bar < PCIEDEV_N_BARS; ++bar){
-      if(pciedevdev->memmory_base[bar]){
-       pci_iounmap(dev, pciedevdev->memmory_base[bar]);
-       pciedevdev->memmory_base[bar]  = 0;
-       pciedevdev->mem_base[bar]      = 0;
-       pciedevdev->mem_base_end[bar]  = 0;
-       pciedevdev->mem_base_flag[bar] = 0;
-       pciedevdev->rw_off[bar]        = 0;
+      if(pciedevdev->memory_base[bar]){
+       pci_iounmap(dev, pciedevdev->memory_base[bar]);
+       pciedevdev->memory_base[bar]  = 0;
+       pciedevdev->bar_length[bar]        = 0;
       }
     }// for (bar)
 

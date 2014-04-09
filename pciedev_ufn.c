@@ -75,7 +75,7 @@ void*   pciedev_get_baddress(int br_num, struct pciedev_dev  *dev)
       return NULL;
     }
 
-    return dev->memmory_base[br_num];
+    return dev->memory_base[br_num];
 }
 EXPORT_SYMBOL(pciedev_get_baddress);
 
@@ -109,8 +109,8 @@ int      pciedev_get_brdinfo(struct pciedev_dev  *bdev)
     u32  tmp_data_32;
     
     bdev->startup_brd = 0;
-    if(bdev->memmory_base[0]){ 
-        baddress = bdev->memmory_base[0];
+    if(bdev->memory_base[0]){ 
+        baddress = bdev->memory_base[0];
         address = baddress;
         tmp_data_32       = ioread32(address );
         if(tmp_data_32 == ASCII_BOARD_MAGIC_NUM || tmp_data_32 ==ASCII_BOARD_MAGIC_NUM_L){
@@ -203,7 +203,7 @@ int      pciedev_get_prjinfo(struct pciedev_dev  *bdev)
     /* Rejecting loop, first project is NOT at 0, and there might be none.*/
     while(nextProjectOffset){
       /* FIXME: This mixes pointers and integers. Increpenting a pointer with a uint might be OK, though. */
-      address = bdev->memmory_base[0] + nextProjectOffset;
+      address = bdev->memory_base[0] + nextProjectOffset;
       nextProjectOffset = pciedev_fill_prj_info(bdev, address);
     }
 
@@ -211,12 +211,12 @@ int      pciedev_get_prjinfo(struct pciedev_dev  *bdev)
     for (bar=0; bar < PCIEDEV_N_BARS; ++bar){
 
       /* only try to access the bar if it is implemented */
-      if(bdev->memmory_base[bar]){ 
+      if(bdev->memory_base[bar]){ 
 
 	/* Use a non-rejecting loop because the first project is at 0 (except for bar 0).
 	   This is safe if we assume that the bar is not empty. */
 	do{ 
-	  address = bdev->memmory_base[bar] + nextProjectOffset;
+	  address = bdev->memory_base[bar] + nextProjectOffset;
 	  nextProjectOffset = pciedev_fill_prj_info(bdev, nextProjectOffset);
 	  /* if the next project is 0 the loops exits, leaving the nextProjectOffset correclty
 	     initialised with 0 for the next BAR */
