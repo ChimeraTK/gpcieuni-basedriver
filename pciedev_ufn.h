@@ -170,6 +170,16 @@ typedef struct pciedev_cdev pciedev_cdev;
 
 struct pciedev_cdev;
 
+// internal DMA transfer request description
+struct dma_req
+{
+    void*  reg_address;
+    u_int  offset;          // Device offset of DMA transfer
+    u_int  size;            // Size of DMA transfer
+};
+typedef struct dma_req dma_req;
+
+
 struct module_dev {
     int                 brd_num;
     //    spinlock_t            irq_lock;
@@ -184,7 +194,7 @@ struct module_dev {
     
     struct workqueue_struct* dma_workqueue;
     struct work_struct       dma_work;
-    struct device_ioctrl_dma dma_workData;
+    struct dma_req           dma_workData;
     
     struct list_head    dma_bufferList;
     spinlock_t          dma_bufferList_lock;
