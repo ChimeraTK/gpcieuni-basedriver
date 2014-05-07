@@ -45,15 +45,12 @@ struct device_ioctrl_data  {
 typedef struct device_ioctrl_data device_ioctrl_data;
 
 struct device_ioctrl_dma  {
-        u_int    dma_offset;
+        u_int    dma_offset;    
         u_int    dma_size;
-        u_int    dma_cmd;          // value to DMA Control register
-        u_int    dma_pattern;     // DMA BAR num
+        u_int    dma_cmd;       // value to DMA Control register
+        u_int    dma_pattern;   // DMA BAR num
         u_int    dma_reserved1; // DMA Control register offset (31:16) DMA Length register offset (15:0)
         u_int    dma_reserved2; // DMA Read/Write Source register offset (31:16) Destination register offset (15:0)
-        
-        u_int    dbuf_offset;   // File offset of driver buffer used for DMA 
-        u_int    dbuf_size;     // Size of driver buffer used for DMA
 };
 typedef struct device_ioctrl_dma device_ioctrl_dma;
 

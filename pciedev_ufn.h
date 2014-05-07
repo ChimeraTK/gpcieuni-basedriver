@@ -20,7 +20,7 @@
 
 #undef PDEBUG      
 // TODO: remove this
-//#define PCIEDEV_DEBUG
+#define PCIEDEV_DEBUG
 #ifdef PCIEDEV_DEBUG
 #define PDEBUG(fmt, args...) printk( KERN_INFO "PCIEDEV: " fmt, ## args)
 #else
