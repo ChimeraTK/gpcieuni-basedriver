@@ -192,10 +192,6 @@ struct module_dev {
     int                 dma_order;
     wait_queue_head_t   waitDMA;
     
-    struct workqueue_struct* dma_workqueue;
-    struct work_struct       dma_work;
-    struct dma_req           dma_workData;
-    
     struct list_head    dma_bufferList;
     spinlock_t          dma_bufferList_lock;
     int                 dma_bufferListCount;
