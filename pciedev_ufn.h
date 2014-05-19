@@ -18,7 +18,7 @@
 
 #include "pciedev_io.h"
 
-#undef PDEBUG      
+//#undef PDEBUG      
 // TODO: remove this
 //#define PCIEDEV_DEBUG
 #ifdef PCIEDEV_DEBUG
@@ -80,7 +80,7 @@ typedef struct pciedev_prj_info pciedev_prj_info;
 
 struct pciedev_cdev;
 struct pciedev_dev {
-   
+    char                name[64];       /**< Card name. */
     struct cdev         cdev;	  /* Char device structure      */
     struct mutex      dev_mut;            /* mutual exclusion semaphore */
     struct pci_dev    *pciedev_pci_dev;
@@ -193,13 +193,11 @@ struct module_dev {
     wait_queue_head_t   waitDMA;
     
     struct list_head    dma_bufferList;
-    spinlock_t          dma_bufferList_lock;
-    int                 dma_bufferListCount;
+    struct list_head    *bufferListNext;
+    spinlock_t          dma_bufferList_lock; // TODO: rename
     struct semaphore    dma_sem;
     wait_queue_head_t   buffer_waitQueue;
-    int                 buffer_waitFlag;
-    int                 buffer_nrRead;
-    struct pciedev_block*      dma_buffer;
+    struct pciedev_buffer*      dma_buffer;
     
     struct pciedev_dev *parent_dev;
 };

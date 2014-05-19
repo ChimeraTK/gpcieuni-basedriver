@@ -59,13 +59,14 @@ EXPORT_SYMBOL(pciedev_get_drvdata);
 module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_blk_size, pciedev_dev* pcidev)
 {
     module_dev* mdev;
+    ushort i;
     
     PDEBUG("pciedev_create_drvdata( brd_num = %i)", brd_num);
     
     mdev = kzalloc(sizeof(module_dev), GFP_KERNEL);
     if(!mdev) 
     {
-        return -ENOMEM;
+        return ERR_PTR(-ENOMEM);
     }
     mdev->brd_num     = brd_num;
     mdev->parent_dev  = pcidev;
@@ -76,15 +77,14 @@ module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_
     spin_lock_init(&mdev->dma_bufferList_lock);
     sema_init(&mdev->dma_sem, 1);
     
-    ushort i = 0;
-    for (i; i < kbuf_blk_num; i++)
-    {
-        pciedev_block_add(mdev, kbuf_blk_size);
-    }
 
+    for (i = 0; i < kbuf_blk_num; i++)
+    {
+        pciedev_buffer_add(mdev, pciedev_buffer_create(pcidev, kbuf_blk_size)); // TODO: error handling
+    }
+    mdev->bufferListNext = mdev->dma_bufferList.next;
+    
     mdev->waitFlag        = 1;
-    mdev->buffer_waitFlag = 1;
-    mdev->buffer_nrRead   = 0;
     mdev->dma_buffer      = 0;
     
     return mdev;
@@ -93,29 +93,12 @@ EXPORT_SYMBOL(pciedev_create_drvdata);
 
 void pciedev_release_drvdata(module_dev* mdev)
 {
-    struct list_head     *pos;
-    struct list_head     *tpos;
-    struct pciedev_block *block;
-    
     PDEBUG("pciedev_release_drvdata(mdev = %X)", mdev);
     
     if (mdev)
     {
         // clear the buffers
-        spin_lock(&mdev->dma_bufferList_lock);
-        list_for_each_safe(pos, tpos, &mdev->dma_bufferList) {
-            block = list_entry(pos, struct pciedev_block, list);
-            list_del(pos);
-            mdev->dma_bufferListCount--;
-            pciedev_dma_free(mdev->parent_dev, block);
-            kfree(block);
-        }
-        
-        // wake up sleepers
-        mdev->buffer_waitFlag = 1;
-        wake_up_interruptible(&(mdev->buffer_waitQueue));
-        
-        spin_unlock(&mdev->dma_bufferList_lock);        
+        pciedev_buffer_clearAll(mdev);        
         
         // TODO: should not free until sleepers are done?!
         kfree(mdev);

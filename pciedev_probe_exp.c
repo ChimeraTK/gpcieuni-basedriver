@@ -46,7 +46,6 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     u32 devNumber;
     u32 funcNumber;
     
-    char f_name[64];
     char prc_entr[64];
     	
     printk(KERN_ALERT "############PCIEDEV_PROBE THIS IS U_FUNCTION NAME %s\n", dev_name);
@@ -388,13 +387,13 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
                                                   pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum));
     }
     m_pciedev_dev_p->dev_sts   = 1;
-    sprintf(f_name, "%ss%d", dev_name, tmp_slot_num);
+    sprintf(m_pciedev_dev_p->name, "%ss%d", dev_name, tmp_slot_num);
     sprintf(prc_entr, "%ss%d", dev_name, tmp_slot_num);
     printk(KERN_INFO "PCIEDEV_PROBE:  CREAT DEVICE MAJOR %i MINOR %i F_NAME %s\n",
-               pciedev_cdev_p->PCIEDEV_MAJOR, (pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum), f_name);
-    device_create(pciedev_cdev_p->pciedev_class, NULL, MKDEV(pciedev_cdev_p->PCIEDEV_MAJOR, 
-                                                      (pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum)),
-                   &m_pciedev_dev_p->pciedev_pci_dev->dev, f_name);
+           pciedev_cdev_p->PCIEDEV_MAJOR, (pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum), m_pciedev_dev_p->name);
+    device_create(pciedev_cdev_p->pciedev_class, NULL, 
+                  MKDEV(pciedev_cdev_p->PCIEDEV_MAJOR, pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum),
+                  &m_pciedev_dev_p->pciedev_pci_dev->dev, m_pciedev_dev_p->name);
 
     pciedev_cdev_p->pciedev_procdir                     = create_proc_entry(prc_entr, S_IFREG | S_IRUGO, 0);
     pciedev_cdev_p->pciedev_procdir->read_proc  = pciedev_procinfo;

@@ -13,7 +13,6 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
      int                    brdNum            = 0;
      int                    brdCnt              = 0;
      int                    m_brdNum      = 0;
-     char                f_name[64];
      char                prc_entr[64];
      dev_t              devno ;
      
@@ -30,7 +29,6 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
     tmp_slot_num  = pciedevdev->slot_num;
     m_brdNum       = pciedevdev->brd_num;
     * brd_num        = tmp_slot_num;
-    sprintf(f_name, "%ss%d", dev_name, tmp_slot_num);
     sprintf(prc_entr, "%ss%d", dev_name, tmp_slot_num);
     printk(KERN_ALERT "PCIEDEV_REMOVE: SLOT %d DEV %d BOARD %i\n", tmp_slot_num, tmp_dev_num, m_brdNum);
     
