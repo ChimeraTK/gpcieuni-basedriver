@@ -19,13 +19,17 @@
 #include "pciedev_io.h"
 
 //#undef PDEBUG      
-// TODO: remove this
-//#define PCIEDEV_DEBUG
+// TODO: remove this *****
+#define PCIEDEV_DEBUG
 #ifdef PCIEDEV_DEBUG
 #define PDEBUG(fmt, args...) printk( KERN_INFO "PCIEDEV: " fmt, ## args)
 #else
 #define PDEBUG(fmt, args...) 
 #endif
+
+//#define PCIEDEV_TEST_MISSING_INTERRUPT
+
+// **** TODO: remove this
 
 
 #ifndef PCIEDEV_NR_DEVS
@@ -186,10 +190,6 @@ struct module_dev {
     struct timeval      dma_start_time;
     struct timeval      dma_stop_time;
     int                 waitFlag;
-    u32                 dev_dma_size;
-    u32                 dma_page_num;
-    int                 dma_offset;
-    int                 dma_order;
     wait_queue_head_t   waitDMA;
     
     struct list_head    dma_bufferList;
@@ -216,6 +216,7 @@ int        pciedev_set_drvdata(struct pciedev_dev *, void *);
 void*    pciedev_get_drvdata(struct pciedev_dev *);
 int        pciedev_get_brdnum(struct pci_dev *);
 pciedev_dev*   pciedev_get_pciedata(struct pci_dev *);
+module_dev*   pciedev_get_moduledata(struct pciedev_dev *);
 void*    pciedev_get_baddress(int, struct pciedev_dev *);
 
 int       pciedev_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pciedev_cdev **, char *, int * );
@@ -225,9 +226,10 @@ int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
 
-module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_blk_size, pciedev_dev* pcidev);
+module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev, ushort kbuf_blk_num, ulong kbuf_blk_size);
 void        pciedev_release_drvdata(module_dev* mdev);
 
+int     pciedev_register_write32(u32 value, void* address, bool ensureFlush);
 
 #if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
 int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *, struct pt_regs *), struct pciedev_dev *, char *);

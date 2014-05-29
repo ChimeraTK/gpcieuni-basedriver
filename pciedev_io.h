@@ -61,8 +61,8 @@ struct device_ioctrl_time  {
 typedef struct device_ioctrl_time device_ioctrl_time;
 
 struct device_ioctrl_kbuf_info  {
-    u_int num_blocks;
-    u_int block_size;
+    unsigned long num_blocks;
+    unsigned long block_size;
 };
 typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
 
@@ -77,10 +77,9 @@ typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
 #define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
 #define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
 #define PCIEDEV_KBUF_INFO               _IOWR(PCIEDOOCS_IOC, 74, int)
-#define PCIEDEV_KRING_READ_DMA          _IOWR(PCIEDOOCS_IOC, 75, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR  76
+#define PCIEDOOCS_IOC_DMA_MAXNR  75
 
 #endif

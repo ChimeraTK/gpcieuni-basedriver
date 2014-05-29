@@ -6,6 +6,69 @@
 
 #include "pciedev_buffer.h"
 
+/**
+ *  @brief Allocate memory buffer for DMA transfers.
+ * 
+ * Allocates and initializes pciedev_buffer structure with corresponding contiguous block of memory that can be 
+ * used as target in DMA data tranfer from device. Buffer is mapped for DMA from given PCI device.
+ * Buffer size should be power of 2 and at least 4kB. Upper limit is system dependant, but anything bigger than 4MB is 
+ * likely going to fail with -ENOMEM.
+ * 
+ * @param dev       Target PCI device.
+ * @param blkSize   Buffer size.
+ *
+ * @return          On success the allocated memory buffer is returned.
+ * @retval -ENOMEM  Allocation failed
+ * 
+ */
+pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize)
+{
+    pciedev_buffer *buffer;
+    unsigned long iter = 0;
+    
+    PDEBUG("pciedev_buffer_create(dev.name=%s, bufSize=0x%lx)", dev->name, bufSize);
+    
+    // allocate the buffer structure
+    buffer = kzalloc(sizeof(pciedev_buffer), GFP_KERNEL);
+    if (!buffer)
+    {
+        return ERR_PTR(-ENOMEM);
+    }
+    
+    // init the buffer structure 
+    buffer->order    = get_order(bufSize);
+    buffer->size     = 1 << (buffer->order + PAGE_SHIFT);
+    set_bit(BUFFER_STATE_AVAILABLE, &buffer->state);
+    clear_bit(BUFFER_STATE_WAITING, &buffer->state);
+    
+    // allocate memory block
+    buffer->kaddr = __get_free_pages(GFP_KERNEL|__GFP_DMA, buffer->order);
+    if (!buffer->kaddr) 
+    {
+        printk(KERN_ERR "pciedev_buffer_create(): can't get free pages of order %u\n", buffer->order);
+        
+        pciedev_buffer_destroy(dev, buffer);
+        return ERR_PTR(-ENOMEM);
+    }
+    
+    // reserve allocated memory pages to prevent them from being swapped out
+    for (iter = 0; iter < buffer->size; iter += PAGE_SIZE) 
+    {
+        SetPageReserved(virt_to_page(buffer->kaddr + iter));
+    }
+    
+    // map to pci_dev
+    buffer->dma_handle = dma_map_single(&dev->pciedev_pci_dev->dev, (void *)buffer->kaddr, buffer->size, DMA_FROM_DEVICE);
+    if (dma_mapping_error(&dev->pciedev_pci_dev->dev, buffer->dma_handle)) 
+    {
+        printk(KERN_ERR "pciedev_buffer_create(): dma mapping error\n");
+        pciedev_buffer_destroy(dev, buffer);
+        return ERR_PTR(-ENOMEM);
+    }    
+    
+    printk(KERN_INFO "PCIEDEV(%s): Allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
+    return buffer;
+}
 
 /**
  * @brief Free resources allocated by memory buffer. 
@@ -45,88 +108,36 @@ void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer)
     kfree(buffer);
 }
 
-/**
- *  @brief Allocate memory buffer for DMA transfers.
+
+/** 
+ * @brief Creates memory buffer and appends it to the list of memory buffers for given device.
  * 
- * Allocates and initializes pciedev_buffer structure with corresponding contiguous block of memory that can be 
- * used as target in DMA data tranfer from device. Buffer is mapped for DMA from given PCI device.
- * Buffer size should be power of 2 and at least 4kB. Upper limit is system dependant, but anything bigger than 4MB is 
- * likely going to fail with -ENOMEM.
+ * This function is reentrant.
  * 
- * @param dev       Target PCI device.
+ * @param dev       Target device.
  * @param blkSize   Buffer size.
  *
  * @return          On success the allocated memory buffer is returned.
  * @retval -ENOMEM  Allocation failed
- * 
  */
-pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize)
+pciedev_buffer* pciedev_buffer_append(module_dev* mdev, unsigned long bufSize)
 {
-    pciedev_buffer *buffer;
-    unsigned long iter = 0;
+    pciedev_buffer* buffer;
     
-    PDEBUG("pciedev_buffer_create(dev.name=%s, bufSize=0x%lx)", dev->name, bufSize);
- 
-    // allocate the buffer structure
-    buffer = kzalloc(sizeof(pciedev_buffer), GFP_KERNEL);
-    if (!buffer)
+    PDEBUG("pciedev_buffer_append(dev.name=%s, size=0x%lx)", mdev->parent_dev->name, bufSize);
+    
+    buffer = pciedev_buffer_create(mdev->parent_dev, bufSize);
+    if (IS_ERR_OR_NULL(buffer))
     {
         return ERR_PTR(-ENOMEM);
     }
-    
-    // init the buffer structure 
-    buffer->order    = get_order(bufSize);
-    buffer->size     = 1 << (buffer->order + PAGE_SHIFT);
-    buffer->dma_free = 1;
-    buffer->dma_done = 0;
-    
-    // allocate memory block
-    buffer->kaddr = __get_free_pages(GFP_KERNEL|__GFP_DMA, buffer->order);
-    if (!buffer->kaddr) 
-    {
-        printk(KERN_ERR "pciedev_buffer_create(): can't get free pages of order %u\n", buffer->order);
-        
-        pciedev_buffer_destroy(dev, buffer);
-        return ERR_PTR(-ENOMEM);
-    }
-            
-    // reserve allocated memory pages to prevent them from being swapped out
-    for (iter = 0; iter < buffer->size; iter += PAGE_SIZE) 
-    {
-        SetPageReserved(virt_to_page(buffer->kaddr + iter));
-    }
-    
-    // map to pci_dev
-    buffer->dma_handle = dma_map_single(&dev->pciedev_pci_dev->dev, (void *)buffer->kaddr, buffer->size, DMA_FROM_DEVICE);
-    if (dma_mapping_error(&dev->pciedev_pci_dev->dev, buffer->dma_handle)) 
-    {
-        printk(KERN_ERR "pciedev_buffer_create(): dma mapping error\n");
-        pciedev_buffer_destroy(dev, buffer);
-        return ERR_PTR(-ENOMEM);
-    }    
-    
-    printk(KERN_INFO "PCIEDEV(%s): Allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
-    return buffer;
-}
-
-
-/** 
- * @brief Add memory buffer to list of memory buffers for given device.
- * 
- * This function is reentrant.
- * 
- * @param mdev   Target device
- * @return void
- */
-void pciedev_buffer_add(module_dev* mdev, pciedev_buffer *buffer)
-{
-    PDEBUG("pciedev_bufferlist_add(mdev = 0x%lx)", mdev,  );
     
     spin_lock(&mdev->dma_bufferList_lock);
     list_add_tail(&buffer->list, &mdev->dma_bufferList);
     spin_unlock(&mdev->dma_bufferList_lock);        
     
-    printk(KERN_INFO"PCIEDEV: DMA buffer added to buffer list (size=0x%lx)!\n", buffer->size); 
+    printk(KERN_INFO"PCIEDEV(%s): Allocated DMA buffer (size=0x%lx)!\n", mdev->parent_dev->name, buffer->size); 
+    return buffer;
 }
 
 /** 
@@ -143,7 +154,7 @@ void pciedev_buffer_clearAll(module_dev* mdev)
     struct list_head *pos;
     struct list_head *tpos;
     
-    PDEBUG("pciedev_buffer_clearAll(mdev = 0x%lx)");
+    PDEBUG("pciedev_buffer_clearAll(dev.name=%s)", mdev->parent_dev->name);
     
     spin_lock(&mdev->dma_bufferList_lock);
     list_for_each_safe(pos, tpos, &mdev->dma_bufferList) 
@@ -175,24 +186,24 @@ pciedev_buffer* pciedev_buffer_get_free(module_dev* mdev)
     ulong timeout = HZ/1; // one second timeout
     int code = 0;
     
-    PDEBUG("pciedev_buffer_get_free(mdev=0x%lx )", mdev);
+    PDEBUG("pciedev_buffer_get_free(dev.name=%s)", mdev->parent_dev->name);
     
     spin_lock(&mdev->dma_bufferList_lock);  
     buffer = list_entry(mdev->bufferListNext, struct pciedev_buffer, list);
-    while (!buffer->dma_free)
+    while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
     {
         spin_unlock(&mdev->dma_bufferList_lock);        
 
-        PDEBUG("pciedev_buffer_get_free() WAITING... ");
-        code = wait_event_interruptible_timeout(mdev->buffer_waitQueue, buffer->dma_free , timeout);
+        PDEBUG("pciedev_buffer_get_free(): Waiting... ");
+        code = wait_event_interruptible_timeout(mdev->buffer_waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
         if (code == 0)
         {
-            printk(KERN_ALERT "PCIEDEV: Failed to get free memory buffer - TIMEOUT!\n");
+            printk(KERN_ALERT "PCIEDEV(%s): Failed to get free memory buffer - TIMEOUT!\n", mdev->parent_dev->name);
             return ERR_PTR(-EBUSY);
         }
         else if (code < 0 )
         {
-            printk(KERN_ALERT "PCIEDEV: Failed to get free memory buffer - errno=%d\n", code);
+            printk(KERN_ALERT "PCIEDEV(%s): Failed to get free memory buffer - errno=%d\n", mdev->parent_dev->name, code);
             return ERR_PTR(-EINTR);
         }
 
@@ -200,8 +211,8 @@ pciedev_buffer* pciedev_buffer_get_free(module_dev* mdev)
         buffer = list_entry(mdev->bufferListNext, struct pciedev_buffer, list);
     }
     
-    buffer->dma_free = 0;   // Mark buffer reserved
-    buffer->dma_done = 0;   // Mark buffer empty
+    clear_bit(BUFFER_STATE_AVAILABLE, &buffer->state); // Buffer is now reserved
+    set_bit(BUFFER_STATE_WAITING, &buffer->state);     // Buffer is now waiting for DMA data
     
     // wrap circular buffers list
     if (list_is_last(mdev->bufferListNext, &mdev->dma_bufferList))
@@ -218,7 +229,7 @@ pciedev_buffer* pciedev_buffer_get_free(module_dev* mdev)
 }
 
 /**
- * @brief Mark buffer free and wake up any waiters
+ * @brief Mark buffer free and wake up any waiters.
  * 
  * This function is reentrant. 
  * 
@@ -226,22 +237,22 @@ pciedev_buffer* pciedev_buffer_get_free(module_dev* mdev)
  * @param buffer   Target buffer
  * @return void
  */
-void pciedev_buffer_set_free(module_dev* mdev, pciedev_buffer* block)
+void pciedev_buffer_set_free(module_dev* mdev, pciedev_buffer* buffer)
 {
-    PDEBUG("pciedev_buffer_set_free(offset=0x%lx, size=0x%lx)\n", block->dma_offset, block->dma_size);
+    PDEBUG("pciedev_buffer_set_free(dev.name=%s, buffer=0x%p)", mdev->parent_dev->name, buffer);
     
     spin_lock(&mdev->dma_bufferList_lock);
-    block->dma_done = 0;
-    block->dma_free = 1;
+    
+    clear_bit(BUFFER_STATE_WAITING, &buffer->state);
+    set_bit(BUFFER_STATE_AVAILABLE, &buffer->state);
+
     spin_unlock(&mdev->dma_bufferList_lock);        
     
     // Wake up any process waiting for free buffers
     wake_up_interruptible(&(mdev->buffer_waitQueue)); 
 }
 
-EXPORT_SYMBOL(pciedev_buffer_create);
-EXPORT_SYMBOL(pciedev_buffer_add);
-EXPORT_SYMBOL(pciedev_buffer_destroy);
-EXPORT_SYMBOL(pciedev_buffer_clearAll);
-EXPORT_SYMBOL(pciedev_buffer_get_free);
-EXPORT_SYMBOL(pciedev_buffer_set_free);
+EXPORT_SYMBOL(pciedev_buffer_append);   // Creates memory buffer and appends it to the list of memory buffers for given device.
+EXPORT_SYMBOL(pciedev_buffer_clearAll); // Clears all buffers allocated for given device.
+EXPORT_SYMBOL(pciedev_buffer_get_free); // Gives free (unused) buffer from the list of allocated buffers.
+EXPORT_SYMBOL(pciedev_buffer_set_free); // Mark buffer free and wake up any waiters.

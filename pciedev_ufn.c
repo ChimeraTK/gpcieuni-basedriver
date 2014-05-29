@@ -3,6 +3,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>	
 #include <linux/sched.h>
+#include <linux/delay.h>
 
 #include "pciedev_buffer.h"
 #include "pciedev_ufn.h"
@@ -17,7 +18,6 @@ int    pciedev_open_exp( struct inode *inode, struct file *filp )
     dev = container_of(inode->i_cdev, struct pciedev_dev, cdev);
     dev->dev_minor     = minor;
     filp->private_data  = dev; 
-    //printk(KERN_INFO "PCIEDEV_OPEN_EXP: dma handle: 0x%llx for buffer: 0x%lx\n", dev->dma_buffer.dma_handle, dev->dma_buffer.kaddr);
     
     //printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d \n", current->comm, current->pid, minor);
     return 0;
@@ -56,9 +56,21 @@ void *pciedev_get_drvdata(struct pciedev_dev *dev){
 }
 EXPORT_SYMBOL(pciedev_get_drvdata);
 
-module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_blk_size, pciedev_dev* pcidev)
+/**
+ * @brief Allocates and initializes driver specific data for given pci device
+ * 
+ * @param brd_num       device index in the list of probed devices
+ * @param pcidev        target pci device structure
+ * @param kbuf_blk_num  number of preallocated DMA buffers
+ * @param kbuf_blk_size size of preallocated DMA buffers
+ * 
+ * @return  Allocated module_dev strucure
+ * @retval  -ENOMEM     Failed - could not allocate memory
+ */
+module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev, ushort kbuf_blk_num, ulong kbuf_blk_size)
 {
     module_dev* mdev;
+    pciedev_buffer* dmaBuffer;
     ushort i;
     
     PDEBUG("pciedev_create_drvdata( brd_num = %i)", brd_num);
@@ -77,10 +89,15 @@ module_dev* pciedev_create_drvdata(int brd_num, ushort kbuf_blk_num, ulong kbuf_
     spin_lock_init(&mdev->dma_bufferList_lock);
     sema_init(&mdev->dma_sem, 1);
     
-
+    // allocate DMA buffers
     for (i = 0; i < kbuf_blk_num; i++)
     {
-        pciedev_buffer_add(mdev, pciedev_buffer_create(pcidev, kbuf_blk_size)); // TODO: error handling
+        dmaBuffer = pciedev_buffer_append(mdev, kbuf_blk_size); // TODO: error handling
+        if (IS_ERR(dmaBuffer))
+        {
+            pciedev_release_drvdata(mdev);
+            return ERR_CAST(dmaBuffer);
+        }
     }
     mdev->bufferListNext = mdev->dma_bufferList.next;
     
@@ -93,14 +110,18 @@ EXPORT_SYMBOL(pciedev_create_drvdata);
 
 void pciedev_release_drvdata(module_dev* mdev)
 {
-    PDEBUG("pciedev_release_drvdata(mdev = %X)", mdev);
+    PDEBUG("pciedev_release_drvdata(mdev = %p)", mdev);
     
-    if (mdev)
+    if (!IS_ERR_OR_NULL(mdev))
     {
+        // TODO: 
+        // set shutting down
+        // wait until all buffers available (interruptible wait)
+        
         // clear the buffers
         pciedev_buffer_clearAll(mdev);        
         
-        // TODO: should not free until sleepers are done?!
+        // clear the drvdata structure
         kfree(mdev);
     }
 }
@@ -123,6 +144,13 @@ pciedev_dev*   pciedev_get_pciedata(struct pci_dev  *dev)
     return pciedevdev;
 }
 EXPORT_SYMBOL(pciedev_get_pciedata);
+
+module_dev*   pciedev_get_moduledata(struct pciedev_dev *dev)
+{
+    struct module_dev *mdev = (struct module_dev*)(dev->dev_str);
+    return mdev;
+}
+EXPORT_SYMBOL(pciedev_get_moduledata);
 
 void*   pciedev_get_baddress(int br_num, struct pciedev_dev  *dev)
 {
@@ -376,3 +404,53 @@ int pciedev_procinfo(char *buf, char **start, off_t fpos, int lenght, int *eof, 
     return p - buf;
 }
 EXPORT_SYMBOL(pciedev_procinfo);
+
+/**
+ * @brief Writes 32bit value to memory mapped device register
+ * 
+ * If parameter @param ensureFlush is set to true the function will try to make sure that write is flushed to device. 
+ * Flushing is a problem because PCI bus writes are posted asynchronously (see 
+ * <a href="https://www.kernel.org/doc/htmldocs/deviceiobook/accessing_the_device.html">deviceiobook in  Linux Kernel HTML Documentation</a>). 
+ * In principle PCI bus should automatically flush everything before next ioread is serviced. However, experience indicate that event this
+ * is a problem with fast CPUs, therefore this function attempts up to 5 retries on ioread with 1 microsecond delays between them. This is       
+ * still an experimental solution that needs to be verified.
+ * 
+ * @param address     Memory address of the target register
+ * @param value       Value to write to target register
+ * @param ensureFlush Ensure write operation is flushed to device before function returns.
+ * 
+ * @retval  0     Success
+ * @retval  -EIO  Failure
+ */
+int pciedev_register_write32(u32 value, void* address, bool ensureFlush)
+{
+    u32 readbackData;
+    int flushRetry = 5;
+    
+    // Write to device register
+    iowrite32(value, address);
+    
+    if (ensureFlush)
+    {
+        // force CPU write flush
+        smp_wmb();
+        while (flushRetry > 0)
+        {
+            // Read from device should force PCI bus to flush all writes
+            readbackData = ioread32(address);
+            smp_rmb();
+            PDEBUG("written=0x%x, readback=0x%x", value, readbackData);
+            if (readbackData == value) break; // Assume write was flushed
+            
+            break; // TODO: readback does not work, so we have no feedback from PCI bus... We need a new plan.
+            
+            // Experimental: delay to give PCI bus some time and then read again 
+            PDEBUG("Asynchronous write to device register too slow, delaying execution by one microsecond... ");
+            udelay(1);
+            flushRetry--;
+        }
+    }
+    
+    return (flushRetry > 0) ? 0 : -EIO; 
+}
+EXPORT_SYMBOL(pciedev_register_write32);
