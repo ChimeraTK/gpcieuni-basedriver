@@ -32,6 +32,7 @@ int pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev  **pciedev_cdev_p, char
     sprintf(prc_entr, "%ss%d", dev_name, tmp_slot_num);
     printk(KERN_ALERT "PCIEDEV_REMOVE: SLOT %d DEV %d BOARD %i\n", tmp_slot_num, tmp_dev_num, m_brdNum);
     
+    
     /* now let's be good and free the proj_info_list items. since we will be removing items
      * off the list using list_del() we need to use a safer version of the list_for_each() 
      * macro aptly named list_for_each_safe(). Note that you MUST use this macro if the loop 

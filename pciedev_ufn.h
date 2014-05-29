@@ -17,6 +17,7 @@
 #include <linux/workqueue.h>
 
 #include "pciedev_io.h"
+#include "pciedev_buffer.h"
 
 //#undef PDEBUG      
 // TODO: remove this *****
@@ -87,6 +88,7 @@ struct pciedev_dev {
     char                name[64];       /**< Card name. */
     struct cdev         cdev;	  /* Char device structure      */
     struct mutex      dev_mut;            /* mutual exclusion semaphore */
+    
     struct pci_dev    *pciedev_pci_dev;
     int                        dev_num;
     int                        brd_num;
@@ -174,35 +176,6 @@ typedef struct pciedev_cdev pciedev_cdev;
 
 struct pciedev_cdev;
 
-// internal DMA transfer request description
-struct dma_req
-{
-    void*  reg_address;
-    u_int  offset;          // Device offset of DMA transfer
-    u_int  size;            // Size of DMA transfer
-};
-typedef struct dma_req dma_req;
-
-
-struct module_dev {
-    int                 brd_num;
-    //    spinlock_t            irq_lock;
-    struct timeval      dma_start_time;
-    struct timeval      dma_stop_time;
-    int                 waitFlag;
-    wait_queue_head_t   waitDMA;
-    
-    struct list_head    dma_bufferList;
-    struct list_head    *bufferListNext;
-    spinlock_t          dma_bufferList_lock; // TODO: rename
-    struct semaphore    dma_sem;
-    wait_queue_head_t   buffer_waitQueue;
-    struct pciedev_buffer*      dma_buffer;
-    
-    struct pciedev_dev *parent_dev;
-};
-typedef struct module_dev module_dev;
-
 typedef struct pciedev_mem_map pciedev_mem_map;
 
 int        pciedev_open_exp( struct inode *, struct file * );
@@ -216,7 +189,6 @@ int        pciedev_set_drvdata(struct pciedev_dev *, void *);
 void*    pciedev_get_drvdata(struct pciedev_dev *);
 int        pciedev_get_brdnum(struct pci_dev *);
 pciedev_dev*   pciedev_get_pciedata(struct pci_dev *);
-module_dev*   pciedev_get_moduledata(struct pciedev_dev *);
 void*    pciedev_get_baddress(int, struct pciedev_dev *);
 
 int       pciedev_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pciedev_cdev **, char *, int * );
@@ -225,9 +197,6 @@ int       pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev **, char *, int *
 int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
-
-module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev, ushort kbuf_blk_num, ulong kbuf_blk_size);
-void        pciedev_release_drvdata(module_dev* mdev);
 
 int     pciedev_register_write32(u32 value, void* address, bool ensureFlush);
 

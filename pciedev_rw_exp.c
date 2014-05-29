@@ -24,7 +24,6 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     u32        tmp_data_32;
     device_rw  reading;
     void*       address;
-    void*      pDataBuf          = 0;
     
     struct pciedev_dev *dev = filp->private_data;
     minor = dev->dev_minor;

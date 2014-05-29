@@ -1,7 +1,16 @@
 #ifndef PCIEDEV_BUFFER_H_
 #define PCIEDEV_BUFFER_H_
 
-#include "pciedev_ufn.h"
+struct pciedev_dev;
+struct pciedev_buffer_list 
+{
+    struct pciedev_dev  *parentDev;
+    struct list_head    list;
+    struct list_head    *listNext;
+    spinlock_t          listLock; // TODO: rename
+    wait_queue_head_t   waitQueue;
+};
+typedef struct pciedev_buffer_list pciedev_buffer_list;
 
 /**
  * Memory block struct used for dma transfer memory.
@@ -30,13 +39,15 @@ enum {
     BUFFER_STATE_WAITING,         /**< Buffer is waiting for DMA to complete */
 };
 
+void pciedev_bufferList_init(pciedev_buffer_list *bufferList, struct pciedev_dev *parentDev);
+
+void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer);
+void pciedev_bufferList_clear(pciedev_buffer_list* list);
+
 pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize);
 void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer);
 
-pciedev_buffer* pciedev_buffer_append(module_dev* mdev, unsigned long bufSize);
-void pciedev_buffer_clearAll(module_dev* mdev);
-
-pciedev_buffer* pciedev_buffer_get_free(module_dev* mdev);
-void pciedev_buffer_set_free(module_dev* mdev, pciedev_buffer* block);
+pciedev_buffer* pciedev_buffer_get_free(pciedev_buffer_list* list);
+void pciedev_buffer_set_free(pciedev_buffer_list* list, pciedev_buffer* block);
 
 #endif /* PCIEDEV_BUFFER_H_ */

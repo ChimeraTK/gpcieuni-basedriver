@@ -18,7 +18,7 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     int     err       = 0;
     int     result   = 0;
     int     tmp_info = 0;
-    char  **endptr;
+    char  **endptr = 0;
     
     u16 vendor_id;
     u16 device_id;
@@ -128,8 +128,6 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     m_pciedev_dev_p->pciedev_all_mems = 0;
     m_pciedev_dev_p->brd_num                = m_brdNum;
     m_pciedev_dev_p->dev_minor             = pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum;
-    
-    
     /*************************END CDEV INIT*************************************************/
     
     if ((err= pci_enable_device(dev)))

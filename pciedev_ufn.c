@@ -56,77 +56,6 @@ void *pciedev_get_drvdata(struct pciedev_dev *dev){
 }
 EXPORT_SYMBOL(pciedev_get_drvdata);
 
-/**
- * @brief Allocates and initializes driver specific data for given pci device
- * 
- * @param brd_num       device index in the list of probed devices
- * @param pcidev        target pci device structure
- * @param kbuf_blk_num  number of preallocated DMA buffers
- * @param kbuf_blk_size size of preallocated DMA buffers
- * 
- * @return  Allocated module_dev strucure
- * @retval  -ENOMEM     Failed - could not allocate memory
- */
-module_dev* pciedev_create_drvdata(int brd_num, pciedev_dev* pcidev, ushort kbuf_blk_num, ulong kbuf_blk_size)
-{
-    module_dev* mdev;
-    pciedev_buffer* dmaBuffer;
-    ushort i;
-    
-    PDEBUG("pciedev_create_drvdata( brd_num = %i)", brd_num);
-    
-    mdev = kzalloc(sizeof(module_dev), GFP_KERNEL);
-    if(!mdev) 
-    {
-        return ERR_PTR(-ENOMEM);
-    }
-    mdev->brd_num     = brd_num;
-    mdev->parent_dev  = pcidev;
-
-    init_waitqueue_head(&mdev->waitDMA);
-    init_waitqueue_head(&mdev->buffer_waitQueue);
-    INIT_LIST_HEAD(&mdev->dma_bufferList);
-    spin_lock_init(&mdev->dma_bufferList_lock);
-    sema_init(&mdev->dma_sem, 1);
-    
-    // allocate DMA buffers
-    for (i = 0; i < kbuf_blk_num; i++)
-    {
-        dmaBuffer = pciedev_buffer_append(mdev, kbuf_blk_size); // TODO: error handling
-        if (IS_ERR(dmaBuffer))
-        {
-            pciedev_release_drvdata(mdev);
-            return ERR_CAST(dmaBuffer);
-        }
-    }
-    mdev->bufferListNext = mdev->dma_bufferList.next;
-    
-    mdev->waitFlag        = 1;
-    mdev->dma_buffer      = 0;
-    
-    return mdev;
-}
-EXPORT_SYMBOL(pciedev_create_drvdata);
-
-void pciedev_release_drvdata(module_dev* mdev)
-{
-    PDEBUG("pciedev_release_drvdata(mdev = %p)", mdev);
-    
-    if (!IS_ERR_OR_NULL(mdev))
-    {
-        // TODO: 
-        // set shutting down
-        // wait until all buffers available (interruptible wait)
-        
-        // clear the buffers
-        pciedev_buffer_clearAll(mdev);        
-        
-        // clear the drvdata structure
-        kfree(mdev);
-    }
-}
-EXPORT_SYMBOL(pciedev_release_drvdata);
-
 int       pciedev_get_brdnum(struct pci_dev *dev)
 {
     int                                 m_brdNum;
@@ -144,13 +73,6 @@ pciedev_dev*   pciedev_get_pciedata(struct pci_dev  *dev)
     return pciedevdev;
 }
 EXPORT_SYMBOL(pciedev_get_pciedata);
-
-module_dev*   pciedev_get_moduledata(struct pciedev_dev *dev)
-{
-    struct module_dev *mdev = (struct module_dev*)(dev->dev_str);
-    return mdev;
-}
-EXPORT_SYMBOL(pciedev_get_moduledata);
 
 void*   pciedev_get_baddress(int br_num, struct pciedev_dev  *dev)
 {
