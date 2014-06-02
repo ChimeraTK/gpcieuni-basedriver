@@ -13,19 +13,14 @@
 #include <linux/types.h>	/* size_t */
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
-#include <linux/semaphore.h>
-#include <linux/workqueue.h>
-
-#include "pciedev_io.h"
-#include "pciedev_buffer.h"
 
 //#undef PDEBUG      
 // TODO: remove this *****
 #define PCIEDEV_DEBUG
 #ifdef PCIEDEV_DEBUG
-#define PDEBUG(fmt, args...) printk( KERN_INFO "PCIEDEV: " fmt, ## args)
+#define PDEBUG(ctx, fmt, args...) printk( KERN_INFO "PCIEDEV(%s): " fmt, ctx, ## args)
 #else
-#define PDEBUG(fmt, args...) 
+#define PDEBUG(ctx, fmt, args...) 
 #endif
 
 //#define PCIEDEV_TEST_MISSING_INTERRUPT
@@ -174,10 +169,6 @@ struct pciedev_cdev {
 };
 typedef struct pciedev_cdev pciedev_cdev;
 
-struct pciedev_cdev;
-
-typedef struct pciedev_mem_map pciedev_mem_map;
-
 int        pciedev_open_exp( struct inode *, struct file * );
 int        pciedev_release_exp(struct inode *, struct file *);
 ssize_t  pciedev_read_exp(struct file *, char __user *, size_t , loff_t *);
@@ -198,7 +189,7 @@ int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
 
-int     pciedev_register_write32(u32 value, void* address, bool ensureFlush);
+int     pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
 #if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
 int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *, struct pt_regs *), struct pciedev_dev *, char *);

@@ -10,10 +10,11 @@
 void pciedev_bufferList_init(pciedev_buffer_list *bufferList, pciedev_dev *parentDev)
 {
     bufferList->parentDev = parentDev;
-    spin_lock_init(&bufferList->listLock);
+    spin_lock_init(&bufferList->lock);
     init_waitqueue_head(&bufferList->waitQueue);
-    INIT_LIST_HEAD(&bufferList->list);
-    bufferList->listNext = 0;
+    INIT_LIST_HEAD(&bufferList->head);
+    bufferList->next = 0;
+    bufferList->shutDownFlag = 0;
 }
 EXPORT_SYMBOL(pciedev_bufferList_init); 
 
@@ -28,13 +29,13 @@ EXPORT_SYMBOL(pciedev_bufferList_init);
  */
 void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer)
 {
-    spin_lock(&list->listLock);
-    list_add_tail(&buffer->list, &list->list);
-    spin_unlock(&list->listLock);
+    spin_lock(&list->lock);
+    list_add_tail(&buffer->list, &list->head);
+    spin_unlock(&list->lock);
     
-    if (list_is_singular(&list->list))
+    if (list_is_singular(&list->head))
     {
-        list->listNext = list->list.next;
+        list->next = list->head.next;
     }
 }
 EXPORT_SYMBOL(pciedev_bufferList_append);   
@@ -49,18 +50,49 @@ EXPORT_SYMBOL(pciedev_bufferList_append);
  */
 void pciedev_bufferList_clear(pciedev_buffer_list* list)
 {
+    ulong timeout = HZ/1; // one second timeout
     pciedev_buffer *buffer = 0;
     struct list_head *pos;
     struct list_head *tpos;
+    int code;
     
-    spin_lock(&list->listLock);
-    list_for_each_safe(pos, tpos, &list->list) 
+    spin_lock(&list->lock);
+    list->shutDownFlag = 1;
+    
+    list_for_each_safe(pos, tpos, &list->head) 
     {
         buffer = list_entry(pos, struct pciedev_buffer, list);
+        code = 1;
+        
+        while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
+        {
+            spin_unlock(&list->lock);
+            
+            PDEBUG(list->parentDev->name, "pciedev_bufferList_clear(): Waiting for pending operations on buffer to complete...");
+            code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
+            if (code == 0)
+            {
+                printk(KERN_ALERT "PCIEDEV(%s): Timeout waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
+                       list->parentDev->name);
+            }
+            else if (code < 0 )
+            {
+                printk(KERN_ALERT "PCIEDEV(%s): Interrupted while waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
+                       list->parentDev->name);
+            }
+            
+            spin_lock(&list->lock);
+        }
+        
         list_del(pos);
-        pciedev_buffer_destroy(list->parentDev, buffer);
+        
+        if (code > 0)
+        {
+            pciedev_buffer_destroy(list->parentDev, buffer);
+        }
+        // else deleting buffer could be dangerous. Better have memory leak than kernel panic.
     }
-    spin_unlock(&list->listLock);
+    spin_unlock(&list->lock);
 }
 EXPORT_SYMBOL(pciedev_bufferList_clear);   
 
@@ -84,7 +116,7 @@ pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long buf
     pciedev_buffer *buffer;
     unsigned long iter = 0;
     
-    PDEBUG("pciedev_buffer_create(dev.name=%s, bufSize=0x%lx)", dev->name, bufSize);
+    PDEBUG(dev->name, "pciedev_buffer_create(bufSize=0x%lx)", bufSize);
     
     // allocate the buffer structure
     buffer = kzalloc(sizeof(pciedev_buffer), GFP_KERNEL);
@@ -140,7 +172,7 @@ void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer)
 {
     unsigned long iter = 0;
     
-    PDEBUG("pciedev_buffer_destroy(dev.name=%s, buffer=%p)", dev->name, buffer);
+    PDEBUG(dev->name, "pciedev_buffer_destroy(buffer=%p)", buffer);
     
     if (!buffer)
     {
@@ -182,19 +214,21 @@ EXPORT_SYMBOL(pciedev_buffer_destroy);
  * @retval -BUSY   Timed out while waiting for available buffer 
  * 
  */
-pciedev_buffer* pciedev_buffer_get_free(pciedev_buffer_list* list)
+pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
 {
     pciedev_buffer *buffer = 0;
     ulong timeout = HZ/1; // one second timeout
     int code = 0;
     
-    spin_lock(&list->listLock);  
-    buffer = list_entry(list->listNext, struct pciedev_buffer, list);
+    spin_lock(&list->lock);
+    if (list->shutDownFlag) return ERR_PTR(-EINTR);
+        
+    buffer = list_entry(list->next, struct pciedev_buffer, list);
     while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
     {
-        spin_unlock(&list->listLock);
+        spin_unlock(&list->lock);
 
-        PDEBUG("pciedev_buffer_get_free(): Waiting... ");
+        PDEBUG(list->parentDev->name, "pciedev_bufferList_get_free(): Waiting... ");
         code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
         if (code == 0)
         {
@@ -205,27 +239,29 @@ pciedev_buffer* pciedev_buffer_get_free(pciedev_buffer_list* list)
             return ERR_PTR(-EINTR);
         }
 
-        spin_lock(&list->listLock);
-        buffer = list_entry(list->listNext, struct pciedev_buffer, list);
+        spin_lock(&list->lock);
+        if (list->shutDownFlag) return ERR_PTR(-EINTR);
+        
+        buffer = list_entry(list->next, struct pciedev_buffer, list);
     }
     
     clear_bit(BUFFER_STATE_AVAILABLE, &buffer->state); // Buffer is now reserved
     set_bit(BUFFER_STATE_WAITING, &buffer->state);     // Buffer is now waiting for DMA data
     
     // wrap circular buffers list
-    if (list_is_last(list->listNext, &list->list))
+    if (list_is_last(list->next, &list->head))
     {
-        list->listNext = list->list.next;
+        list->next = list->head.next;
     }
     else
     {
-        list->listNext = list->listNext->next;
+        list->next = list->next->next;
     }
-    spin_unlock(&list->listLock);
+    spin_unlock(&list->lock);
     
     return buffer;
 }
-EXPORT_SYMBOL(pciedev_buffer_get_free); 
+EXPORT_SYMBOL(pciedev_bufferList_get_free); 
 
 /**
  * @brief Mark buffer free and wake up any waiters.
@@ -236,16 +272,16 @@ EXPORT_SYMBOL(pciedev_buffer_get_free);
  * @param buffer   Target buffer
  * @return void
  */
-void pciedev_buffer_set_free(pciedev_buffer_list* list, pciedev_buffer* buffer)
+void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* buffer)
 {
-    spin_lock(&list->listLock);
+    spin_lock(&list->lock);
     
     clear_bit(BUFFER_STATE_WAITING, &buffer->state);
     set_bit(BUFFER_STATE_AVAILABLE, &buffer->state);
 
-    spin_unlock(&list->listLock);        
+    spin_unlock(&list->lock);        
     
     // Wake up any process waiting for free buffers
     wake_up_interruptible(&(list->waitQueue)); 
 }
-EXPORT_SYMBOL(pciedev_buffer_set_free); 
+EXPORT_SYMBOL(pciedev_bufferList_set_free); 

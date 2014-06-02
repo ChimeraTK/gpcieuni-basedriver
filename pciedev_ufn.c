@@ -5,7 +5,6 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 
-#include "pciedev_buffer.h"
 #include "pciedev_ufn.h"
 
 
@@ -344,10 +343,11 @@ EXPORT_SYMBOL(pciedev_procinfo);
  * @retval  0     Success
  * @retval  -EIO  Failure
  */
-int pciedev_register_write32(u32 value, void* address, bool ensureFlush)
+int pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush)
 {
     u32 readbackData;
     int flushRetry = 5;
+    void *address = (void*)(bar + offset);
     
     // Write to device register
     iowrite32(value, address);
@@ -361,13 +361,13 @@ int pciedev_register_write32(u32 value, void* address, bool ensureFlush)
             // Read from device should force PCI bus to flush all writes
             readbackData = ioread32(address);
             smp_rmb();
-            PDEBUG("written=0x%x, readback=0x%x", value, readbackData);
+            PDEBUG(dev->name, "written=0x%x, readback=0x%x", value, readbackData);
             if (readbackData == value) break; // Assume write was flushed
             
             break; // TODO: readback does not work, so we have no feedback from PCI bus... We need a new plan.
             
             // Experimental: delay to give PCI bus some time and then read again 
-            PDEBUG("Asynchronous write to device register too slow, delaying execution by one microsecond... ");
+            PDEBUG(dev->name, "Asynchronous write to device register too slow, delaying execution by one microsecond... ");
             udelay(1);
             flushRetry--;
         }
