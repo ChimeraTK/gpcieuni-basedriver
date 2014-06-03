@@ -393,9 +393,9 @@ int    pciedev_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
                   MKDEV(pciedev_cdev_p->PCIEDEV_MAJOR, pciedev_cdev_p->PCIEDEV_MINOR + m_brdNum),
                   &m_pciedev_dev_p->pciedev_pci_dev->dev, m_pciedev_dev_p->name);
 
-//     pciedev_cdev_p->pciedev_procdir                     = create_proc_entry(prc_entr, S_IFREG | S_IRUGO, 0);
-//     pciedev_cdev_p->pciedev_procdir->read_proc  = pciedev_procinfo;
-//     pciedev_cdev_p->pciedev_procdir->data           = m_pciedev_dev_p;
+    pciedev_cdev_p->pciedev_procdir                     = create_proc_entry(prc_entr, S_IFREG | S_IRUGO, 0);
+    pciedev_cdev_p->pciedev_procdir->read_proc  = pciedev_procinfo;
+    pciedev_cdev_p->pciedev_procdir->data           = m_pciedev_dev_p;
     
     pciedev_cdev_p->pciedevModuleNum ++;
     return 0;
