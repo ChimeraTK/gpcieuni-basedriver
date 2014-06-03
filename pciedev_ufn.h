@@ -14,19 +14,28 @@
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
 
-//#undef PDEBUG      
-// TODO: remove this *****
-#define PCIEDEV_DEBUG
+/**
+ * @def PCIEDEV_DEBUG 
+ *
+ * This define should be defined in debug build only. It controls the expansion of the PDEBUG macro.
+ */ 
+
+/**
+ * @def PDEBUG 
+ *
+ * In production build this macro will expand to nothing, but in debug build it will print debug messages
+ * using printk() with KERN_INFO level.
+ * 
+ * @param ctx   String describing context where message is produced (usually PCI device name)
+ * @param fmt   Debug message with format specifiers (like with printk())
+ * @param args  Message arguments (like with printk())  
+ */ 
+#undef PDEBUG      
 #ifdef PCIEDEV_DEBUG
 #define PDEBUG(ctx, fmt, args...) printk( KERN_INFO "PCIEDEV(%s): " fmt, ctx, ## args)
 #else
 #define PDEBUG(ctx, fmt, args...) 
 #endif
-
-//#define PCIEDEV_TEST_MISSING_INTERRUPT
-
-// **** TODO: remove this
-
 
 #ifndef PCIEDEV_NR_DEVS
 #define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */

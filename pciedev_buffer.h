@@ -1,4 +1,7 @@
-
+/**
+ *  @file   pciedev_buffer.h
+ *  @brief  Provides definitions for driver allocated list of DMA buffers                        
+ */
 
 #ifndef PCIEDEV_BUFFER_H_
 #define PCIEDEV_BUFFER_H_
@@ -6,42 +9,56 @@
 struct pciedev_dev;
 
 /**
- * Structure for storage and manipulation of linked list of dma buffers
- */
+ * @brief Stores a linked list of DMA buffers.
+ * 
+ * This structure holds a linked list of allocated memory buffers that can be used for DMA. 
+ * It also provides locking and waitqueue that ensure the list is thread safe. 
+ */ 
 struct pciedev_buffer_list 
 {
-    struct pciedev_dev  *parentDev;
-    struct list_head    head;
-    struct list_head    *next;
-    spinlock_t          lock; // TODO: rename
-    wait_queue_head_t   waitQueue;
-    int                 shutDownFlag;
+    struct pciedev_dev  *parentDev;  /**< Link to parent pci device */
+    struct list_head    head;        /**< Linked list head entry  */
+    struct list_head    *next;       /**< Next available buffer  */
+    spinlock_t          lock;        /**< Spinlock that protects linked list and buffer changes  */
+    wait_queue_head_t   waitQueue;   /**< Buffer status changes are signaled here to wake up any waiters  */
+    int                 shutDownFlag;/**< Set to 1 on device/driver shutdown to prevent further buffer allocations */
 };
 typedef struct pciedev_buffer_list pciedev_buffer_list;
 
+
 /**
- * Memory block struct used for dma transfer memory.
+ * @brief A DMA buffer structure. 
+ * 
+ * This structure holds a contiguous memory buffer that can be used for DMA transfer. It also  
+ * packs all the data nesessary to describe DMA operation and a buffer state that is used for
+ * safe buffer manipulation.  
  */
 struct pciedev_buffer {
-    struct list_head    list;           /**< List entry struct. */
+    struct list_head    list;           /**< List entry struct - holds position in the parent list of DMA buffers */
 
-    unsigned long       size;           /**< Memory block size in bytes */
-    unsigned int        order;          /**< Memory block size in units of kernel page order. */
+    unsigned long       size;           /**< Memory buffer size in bytes */
+    unsigned int        order;          /**< Memory buffer size in units of kernel page order. */
 
-    unsigned long       kaddr;          /**< Kernel virtual address of memory block. */
-    dma_addr_t          dma_handle;     /**< Dma handle for memory block. */
+    unsigned long       kaddr;          /**< Kernel virtual address of memory buffer. */
+    dma_addr_t          dma_handle;     /**< Dma handle for memory buffer. */
 
-    unsigned long       dma_offset;     /**< DMA data offset in device memory */   
-    unsigned long       dma_size;       /**< DMA data size */   
+    unsigned long       dma_offset;     /**< DMA operation offset in device memory */   
+    unsigned long       dma_size;       /**< DMA operation data size */   
     
-    unsigned long       state;
+    unsigned long       state;          /**< Buffer state - a combination of ::pciedev_buffer_state_flags */   
 };
 typedef struct pciedev_buffer pciedev_buffer;
 
-enum {
-    BUFFER_STATE_AVAILABLE = 0,   /**< Buffer is available for next operation */
-    BUFFER_STATE_WAITING,         /**< Buffer is waiting for DMA to complete */
+/**
+ * @brief Enum of DMA buffer state flags
+ */
+enum pciedev_buffer_state_flags {
+    BUFFER_STATE_AVAILABLE = 1 << 0,    /**< Buffer is available for next operation */
+    BUFFER_STATE_WAITING   = 1 << 1     /**< Buffer is waiting for DMA to complete */
 };
+
+
+/* pciedev_buffer_list and pciedev_buffer manipulation functions */
 
 void pciedev_bufferList_init(pciedev_buffer_list *bufferList, struct pciedev_dev *parentDev);
 

@@ -1,3 +1,8 @@
+/**
+ *  @file   pciedev_buffer.c
+ *  @brief  Provides implementation of functions related to driver allocated list of DMA buffers                         
+ */
+
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/wait.h>
@@ -7,6 +12,29 @@
 #include "pciedev_buffer.h"
 #include "pciedev_ufn.h"
 
+/* pciedev_buffer_list and pciedev_buffer manipulation functions */
+
+void pciedev_bufferList_init(pciedev_buffer_list *bufferList, struct pciedev_dev *parentDev);
+
+void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer);
+void pciedev_bufferList_clear(pciedev_buffer_list* list);
+pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list);
+void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* block);
+
+pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize);
+void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer);
+
+
+
+
+/**
+ * @brief Initializes empty list of DMA buffers
+ * 
+ * @param bufferList Target list of DMA buffers
+ * @param parentDev  Parent PCI device that buffers map to
+ * 
+ * @return void
+ */
 void pciedev_bufferList_init(pciedev_buffer_list *bufferList, pciedev_dev *parentDev)
 {
     bufferList->parentDev = parentDev;
@@ -19,33 +47,40 @@ void pciedev_bufferList_init(pciedev_buffer_list *bufferList, pciedev_dev *paren
 EXPORT_SYMBOL(pciedev_bufferList_init); 
 
 /** 
- * @brief Creates memory buffer and appends it to the list of memory buffers for given device.
+ * @brief Creates DMA buffer and appends it to the target list of DMA buffers.
+ * @note This function is thread-safe
  * 
- * This function is reentrant.
+ * @param list      Target list of DMA buffers.
+ * @param blkSize   DMA buffer to append
  * 
- * @param dev       Target device.
- * @param blkSize   Buffer size.
  * @return void
  */
 void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer)
 {
     spin_lock(&list->lock);
+
     list_add_tail(&buffer->list, &list->head);
-    spin_unlock(&list->lock);
-    
     if (list_is_singular(&list->head))
     {
         list->next = list->head.next;
     }
+
+    spin_unlock(&list->lock);    
 }
 EXPORT_SYMBOL(pciedev_bufferList_append);   
 
 /** 
- * @brief Clears all buffers allocated for given device.
+ * @brief Removes and releases all the DMA buffers from the list.
  * 
- * This function is reentrant.
+ * This function attempts to release all the resources held by DMA bufffers in a safe manner. It uses the pciedev_buffer_list::shutDownFlag
+ * flag to disable other threads from using the buffers. If any bufffer appears to be in use this function will wait for up to 1 second for
+ * operations on buffer to complete and then move on. If buffer is stuck in a busy mode it's memory won't be released (so memory will leak
+ * in this case). 
+ * @note This function is thread-safe.
+ * @note This function may block.
  * 
- * @param mdev   Target device
+ * @param list   Target list of DMA buffers
+ * 
  * @return void
  */
 void pciedev_bufferList_clear(pciedev_buffer_list* list)
@@ -97,17 +132,17 @@ void pciedev_bufferList_clear(pciedev_buffer_list* list)
 EXPORT_SYMBOL(pciedev_bufferList_clear);   
 
 /**
- *  @brief Allocate memory buffer for DMA transfers.
+ *  @brief Allocates memory buffer for DMA transfers.
  * 
  * Allocates and initializes pciedev_buffer structure with corresponding contiguous block of memory that can be 
- * used as target in DMA data tranfer from device. Buffer is mapped for DMA from given PCI device.
- * Buffer size should be power of 2 and at least 4kB. Upper limit is system dependant, but anything bigger than 4MB is 
- * likely going to fail with -ENOMEM.
+ * used for DMA data tranfer from device. 
+ * @note Buffer size should be power of 2 and at least 4kB. Upper limit is system dependant, but anything bigger 
+ * than 4MB is likely going to fail with -ENOMEM.
  * 
  * @param dev       Target PCI device.
  * @param blkSize   Buffer size.
  *
- * @return          On success the allocated memory buffer is returned.
+ * @return          On success the allocated DMA buffer is returned.
  * @retval -ENOMEM  Allocation failed
  * 
  */
@@ -162,10 +197,11 @@ pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long buf
 EXPORT_SYMBOL(pciedev_buffer_create);   
 
 /**
- * @brief Free resources allocated by memory buffer. 
+ * @brief Frees all resources allocated by DMA buffer. 
  * 
- * @param pciedev  PCI device that target buffer is mapped to
+ * @param pciedev  PCI device that buffer is mapped to
  * @param memblock Target buffer
+ * 
  * @return void
  */
 void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer) 
@@ -201,18 +237,18 @@ void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer)
 EXPORT_SYMBOL(pciedev_buffer_destroy);   
 
 /**
- * @brief Gives free (unused) buffer from the list of allocated buffers.
+ * @brief Gives free (available) DMA buffer from the list of DMA buffers.
  * 
- * This function is reentrant. The returned buffer is marked reserved so it won't appear free to any 
- * other thread. 
- * Note that this function may block! If there is no free buffer available it will wait for up to 1
- * second. If no buffer becomes available in this time, the call will fail.
+ * If there is no free buffer available this fuction will wait for up to 1 second before it times out.
+ * If buffer is found it is reserved by clearing the BUFFER_STATE_AVAILABLE flag.
+ * @note This function is thread-safe.
+ * @note This function may block.
  * 
- * @param mdev     Target device
+ * @param list     Target list of DMA buffers
+ * 
  * @return         On success a free buffer is returned.
  * @retval -EINTR  Interrupted while waiting for available buffer 
  * @retval -BUSY   Timed out while waiting for available buffer 
- * 
  */
 pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
 {
@@ -264,12 +300,12 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
 EXPORT_SYMBOL(pciedev_bufferList_get_free); 
 
 /**
- * @brief Mark buffer free and wake up any waiters.
- * 
- * This function is reentrant. 
+ * @brief Marks DMA buffer avaialble by settig the BUFFER_STATE_AVAILABLE flag and wakes up any waiters.
+ * @note This function is thread-safe.
  * 
  * @param mdev     Target device
  * @param buffer   Target buffer
+ * 
  * @return void
  */
 void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* buffer)

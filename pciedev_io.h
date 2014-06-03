@@ -60,13 +60,6 @@ struct device_ioctrl_time  {
 };
 typedef struct device_ioctrl_time device_ioctrl_time;
 
-struct device_ioctrl_kbuf_info  {
-    unsigned long num_blocks;
-    unsigned long block_size;
-};
-typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
-
-
 /* Use 'o' as magic number */
 #define PCIEDOOCS_IOC                               '0'
 #define PCIEDEV_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
@@ -76,10 +69,9 @@ typedef struct device_ioctrl_kbuf_info device_ioctrl_kbuf_info;
 #define PCIEDEV_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
 #define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
 #define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
-#define PCIEDEV_KBUF_INFO               _IOWR(PCIEDOOCS_IOC, 74, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR  75
+#define PCIEDOOCS_IOC_DMA_MAXNR  74
 
 #endif
