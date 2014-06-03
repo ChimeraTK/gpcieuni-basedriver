@@ -37,6 +37,23 @@
 #define PDEBUG(ctx, fmt, args...) 
 #endif
 
+// Unit testing
+#define TEST_RANDOM_EXIT(cnt, msg, ret)     \
+{                                           \
+    struct timeval currentTime;             \
+    do_gettimeofday(&currentTime);          \
+    if (currentTime.tv_usec % cnt == 0)     \
+    {                                       \
+        printk( KERN_ALERT msg);            \
+        return ret;                         \
+    }                                       \
+}                                              
+//#define PCIEDEV_TEST_MISSING_INTERRUPT
+//#define PCIEDEV_TEST_DEVICE_DMA_BLOCKED
+//#define PCIEDEV_TEST_BUFFER_ALLOCATION_FAILURE
+//#define PCIEDEV_TEST_BUFFER_GET_FREE_FAILURE
+//#define PCIEDEV_TEST_MDEV_ALLOC_FAILURE
+
 #ifndef PCIEDEV_NR_DEVS
 #define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */
 #endif

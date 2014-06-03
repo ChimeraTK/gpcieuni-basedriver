@@ -12,21 +12,6 @@
 #include "pciedev_buffer.h"
 #include "pciedev_ufn.h"
 
-/* pciedev_buffer_list and pciedev_buffer manipulation functions */
-
-void pciedev_bufferList_init(pciedev_buffer_list *bufferList, struct pciedev_dev *parentDev);
-
-void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer);
-void pciedev_bufferList_clear(pciedev_buffer_list* list);
-pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list);
-void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* block);
-
-pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize);
-void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer);
-
-
-
-
 /**
  * @brief Initializes empty list of DMA buffers
  * 
@@ -166,6 +151,10 @@ pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long buf
     set_bit(BUFFER_STATE_AVAILABLE, &buffer->state);
     clear_bit(BUFFER_STATE_WAITING, &buffer->state);
     
+#ifdef PCIEDEV_TEST_BUFFER_ALLOCATION_FAILURE
+    TEST_RANDOM_EXIT(2, "PCIEDEV: Simulating failed buffer allocation!", ERR_PTR(-ENOMEM))
+#endif    
+    
     // allocate memory block
     buffer->kaddr = __get_free_pages(GFP_KERNEL|__GFP_DMA, buffer->order);
     if (!buffer->kaddr) 
@@ -275,6 +264,10 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
             return ERR_PTR(-EINTR);
         }
 
+#ifdef PCIEDEV_TEST_BUFFER_GET_FREE_FAILURE
+        TEST_RANDOM_EXIT(100, "PCIEDEV: Simulating timeout getting available buffer!", ERR_PTR(-EBUSY))
+#endif    
+        
         spin_lock(&list->lock);
         if (list->shutDownFlag) return ERR_PTR(-EINTR);
         
