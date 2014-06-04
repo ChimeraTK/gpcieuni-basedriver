@@ -331,12 +331,16 @@ EXPORT_SYMBOL(pciedev_procinfo);
  * 
  * If parameter @param ensureFlush is set to true the function will try to make sure that write is flushed to device. 
  * Flushing is a problem because PCI bus writes are posted asynchronously (see 
- * <a href="https://www.kernel.org/doc/htmldocs/deviceiobook/accessing_the_device.html">deviceiobook in  Linux Kernel HTML Documentation</a>). 
- * In principle PCI bus should automatically flush everything before next ioread is serviced. However, experience indicate that event this
- * is a problem with fast CPUs, therefore this function attempts up to 5 retries on ioread with 1 microsecond delays between them. This is       
- * still an experimental solution that needs to be verified.
+ * <a href="https://www.kernel.org/doc/htmldocs/deviceiobook/accessing_the_device.html">deviceiobook in  Linux Kernel 
+ * HTML Documentation</a>). In principle PCI bus should automatically flush everything before next ioread is serviced. 
+ * There are sill a couple of layers before writes make it to the board, but usually we only care that order of writes
+ * is correct - any writes comming after the read should come to the board after the previous writes. However there 
+ * seem to be some problem with this assumption therefore we make an addtional 5 microseconds delay after a write that 
+ * has to commmit.
  * 
- * @param address     Memory address of the target register
+ * @param dev         Target device
+ * @param bar         Target BAR
+ * @param offset      Offset of target register within the BAR
  * @param value       Value to write to target register
  * @param ensureFlush Ensure write operation is flushed to device before function returns.
  * 
@@ -345,9 +349,8 @@ EXPORT_SYMBOL(pciedev_procinfo);
  */
 int pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush)
 {
-    u32 readbackData;
-    int flushRetry = 5;
     void *address = (void*)(bar + offset);
+    u32 readbackData;
     
     // Write to device register
     iowrite32(value, address);
@@ -356,23 +359,15 @@ int pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32
     {
         // force CPU write flush
         smp_wmb();
-        while (flushRetry > 0)
-        {
-            // Read from device should force PCI bus to flush all writes
-            readbackData = ioread32(address);
-            smp_rmb();
-            udelay(5);
-            if (readbackData == value) break; // Assume write was flushed
-            
-            break; // TODO: readback does not work, so we have no feedback from PCI bus... We need a new plan.
-            
-            // Experimental: delay to give PCI bus some time and then read again 
-            PDEBUG(dev->name, "Asynchronous write to device register too slow, delaying execution by one microsecond... ");
-            udelay(1);
-            flushRetry--;
-        }
+        
+        // Read request is supposed to block until PCIe bus flushes the pending writes
+        readbackData = ioread32(bar);
+        smp_rmb();
+        
+        // Experimental: additional wait to let TLPs reach the board
+        udelay(5);
     }
     
-    return (flushRetry > 0) ? 0 : -EIO; 
+    return 0; 
 }
 EXPORT_SYMBOL(pciedev_register_write32);
