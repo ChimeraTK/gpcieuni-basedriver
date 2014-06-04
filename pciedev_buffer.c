@@ -235,9 +235,10 @@ EXPORT_SYMBOL(pciedev_buffer_destroy);
  * 
  * @param list     Target list of DMA buffers
  * 
- * @return         On success a free buffer is returned.
- * @retval -EINTR  Interrupted while waiting for available buffer 
- * @retval -BUSY   Timed out while waiting for available buffer 
+ * @return          On success a free buffer is returned.
+ * @retval -EINTR   Interrupted while waiting for available buffer 
+ * @retval -BUSY    Timed out while waiting for available buffer 
+ * @retval -ENOMEM  No buffers are allocated   
  */
 pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
 {
@@ -246,7 +247,11 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
     int code = 0;
     
     spin_lock(&list->lock);
-    if (list->shutDownFlag) return ERR_PTR(-EINTR);
+    if (list->shutDownFlag) 
+    {
+        spin_unlock(&list->lock);
+        return ERR_PTR(-ENOMEM);
+    }
         
     buffer = list_entry(list->next, struct pciedev_buffer, list);
     while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
@@ -264,10 +269,6 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
             return ERR_PTR(-EINTR);
         }
 
-#ifdef PCIEDEV_TEST_BUFFER_GET_FREE_FAILURE
-        TEST_RANDOM_EXIT(100, "PCIEDEV: Simulating timeout getting available buffer!", ERR_PTR(-EBUSY))
-#endif    
-        
         spin_lock(&list->lock);
         if (list->shutDownFlag) return ERR_PTR(-EINTR);
         
