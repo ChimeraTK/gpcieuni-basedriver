@@ -25,9 +25,9 @@ int    pciedev_release_exp(struct inode *inode, struct file *filp)
     int minor            = 0;
     int d_num           = 0;
     u16 cur_proc     = 0;
-    struct pciedev_dev *dev   = filp->private_data;
-    minor     = dev->dev_minor;
-    d_num   = dev->dev_num;
+    //struct pciedev_dev *dev   = filp->private_data;
+    //minor     = dev->dev_minor;
+    //d_num   = dev->dev_num;
     cur_proc = current->group_leader->pid;
     //printk(KERN_ALERT "Close Procces is \"%s\" (pid %i)\n", current->comm, current->pid);
     //printk(KERN_ALERT "Close MINOR %d DEV_NUM %d \n", minor, d_num);
