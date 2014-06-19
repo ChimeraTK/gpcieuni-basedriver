@@ -24,7 +24,6 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     u32        tmp_data_32;
     device_rw  reading;
     void*       address;
-    void*      pDataBuf          = 0;
     
     struct pciedev_dev *dev = filp->private_data;
     minor = dev->dev_minor;
@@ -161,6 +160,7 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
                     tmp_offset = (tmp_offset/sizeof(u32))*sizeof(u32);
                     tmp_data_32       = ioread32(address + tmp_offset);
                     rmb();
+                    
                     reading.data_rw   = tmp_data_32 & 0xFFFFFFFF;
                     retval = itemsize;
                     break;
@@ -419,6 +419,7 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
             case RW_D32:
                 tmp_offset = (tmp_offset/sizeof(u32))*sizeof(u32);
                 iowrite32(tmp_data_32, ((void*)(address + tmp_offset)));
+                
                 wmb();
                 retval = itemsize;                
                 break;

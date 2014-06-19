@@ -1,0 +1,52 @@
+/**
+@mainpage Desy PCIe Common Device Driver documentation
+Desy PCIe Common Driver is a kernel loadable module that provices common driver functionalities that can be used by 
+device derivers written for paricular devices.
+ 
+@section Build
+For release build type:
+    @code
+        make clean all
+    @endcode
+
+For debug build type:
+    @code
+        make clean debug
+    @endcode
+
+Make will automatically install shared files required by other modules to compile and install:
+- Module symbol file to /lib/modules/\<kernel version\>/upciedev/Upciedev.symvers
+- pciedev_io.h header file to /usr/local/include/upciedev/pciedev_io.h
+- pciedev_ufn.h header file to /usr/local/include/upciedev/pciedev_ufn.h
+- pciedev_buffer.h header file to /usr/local/include/upciedev/pciedev_buffer.h
+
+@section install_run Install & run
+
+Type:
+    @code
+        make install
+        modprobe upciedev
+    @endcode
+
+@section parameters Module parameters
+none
+
+@section Functionality
+
+    @subsection driver-operations PCI driver operations
+    The upciedev module provides common implementation of PCI driver functions, including: 
+    - device probing: pciedev_probe_exp(), pciedev_remove_exp())
+    - common ioctl operations: pciedev_ioctl_exp()
+    - common read/write interface: pciedev_read_exp(), pciedev_write_exp()
+
+    @subsection dma-bufferList Circular list of DMA buffers
+    The upciedev module provides implementation of circular list of buffers mapped to target PCI device. Such 
+    buffers can be used for DMA transfer from PCI device. The implmentation includes allocation and thread-safe
+    manipulation of the buffer list. For details see:
+    - pciedev_buffer.h
+    - pciedev_buffer.c
+
+    @subsection utility-functions Common utility functions
+    The upciedev module provides a set of utility functions. See file pciedev_ufn.c 
+    
+*/

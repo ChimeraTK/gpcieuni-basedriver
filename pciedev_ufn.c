@@ -3,8 +3,10 @@
 #include <linux/module.h>
 #include <linux/fs.h>	
 #include <linux/sched.h>
+#include <linux/delay.h>
 
 #include "pciedev_ufn.h"
+
 
 int    pciedev_open_exp( struct inode *inode, struct file *filp )
 {
@@ -15,6 +17,7 @@ int    pciedev_open_exp( struct inode *inode, struct file *filp )
     dev = container_of(inode->i_cdev, struct pciedev_dev, cdev);
     dev->dev_minor     = minor;
     filp->private_data  = dev; 
+    
     //printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d \n", current->comm, current->pid, minor);
     return 0;
 }
@@ -35,7 +38,8 @@ int    pciedev_release_exp(struct inode *inode, struct file *filp)
 }
 EXPORT_SYMBOL(pciedev_release_exp);
 
-int    pciedev_set_drvdata(struct pciedev_dev *dev, void *data)
+
+int pciedev_set_drvdata(struct pciedev_dev *dev, void *data)
 {
     if(!dev)
         return 1;
@@ -321,3 +325,49 @@ int pciedev_procinfo(char *buf, char **start, off_t fpos, int lenght, int *eof, 
     return p - buf;
 }
 EXPORT_SYMBOL(pciedev_procinfo);
+
+/**
+ * @brief Writes 32bit value to memory mapped device register
+ * 
+ * If parameter @param ensureFlush is set to true the function will try to make sure that write is flushed to device. 
+ * Flushing is a problem because PCI bus writes are posted asynchronously (see 
+ * <a href="https://www.kernel.org/doc/htmldocs/deviceiobook/accessing_the_device.html">deviceiobook in  Linux Kernel 
+ * HTML Documentation</a>). In principle PCI bus should automatically flush everything before next ioread is serviced. 
+ * There are sill a couple of layers before writes make it to the board, but usually we only care that order of writes
+ * is correct - any writes comming after the read should come to the board after the previous writes. However there 
+ * seem to be some problem with this assumption therefore we make an addtional 5 microseconds delay after a write that 
+ * has to commmit.
+ * 
+ * @param dev         Target device
+ * @param bar         Target BAR
+ * @param offset      Offset of target register within the BAR
+ * @param value       Value to write to target register
+ * @param ensureFlush Ensure write operation is flushed to device before function returns.
+ * 
+ * @retval  0     Success
+ * @retval  -EIO  Failure
+ */
+int pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush)
+{
+    void *address = (void*)(bar + offset);
+    u32 readbackData;
+    
+    // Write to device register
+    iowrite32(value, address);
+    
+    if (ensureFlush)
+    {
+        // force CPU write flush
+        smp_wmb();
+        
+        // Read request is supposed to block until PCIe bus flushes the pending writes
+        readbackData = ioread32(bar);
+        smp_rmb();
+        
+        // Experimental: additional wait to let TLPs reach the board
+        udelay(5);
+    }
+    
+    return 0; 
+}
+EXPORT_SYMBOL(pciedev_register_write32);

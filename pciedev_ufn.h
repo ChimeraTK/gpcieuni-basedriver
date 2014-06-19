@@ -14,6 +14,45 @@
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
 
+/**
+ * @def PCIEDEV_DEBUG 
+ *
+ * This define should be defined in debug build only. It controls the expansion of the PDEBUG macro.
+ */ 
+
+/**
+ * @def PDEBUG 
+ *
+ * In production build this macro will expand to nothing, but in debug build it will print debug messages
+ * using printk() with KERN_INFO level.
+ * 
+ * @param ctx   String describing context where message is produced (usually PCI device name)
+ * @param fmt   Debug message with format specifiers (like with printk())
+ * @param args  Message arguments (like with printk())  
+ */ 
+#undef PDEBUG      
+#ifdef PCIEDEV_DEBUG
+#define PDEBUG(ctx, fmt, args...) printk( KERN_INFO "PCIEDEV(%s): " fmt, ctx, ## args)
+#else
+#define PDEBUG(ctx, fmt, args...) 
+#endif
+
+// Unit testing
+#define TEST_RANDOM_EXIT(cnt, msg, ret)     \
+{                                           \
+    struct timeval currentTime;             \
+    do_gettimeofday(&currentTime);          \
+    if (currentTime.tv_usec % cnt == 0)     \
+    {                                       \
+        printk( KERN_ALERT msg);            \
+        return ret;                         \
+    }                                       \
+}                                              
+//#define PCIEDEV_TEST_MISSING_INTERRUPT
+//#define PCIEDEV_TEST_DEVICE_DMA_BLOCKED
+//#define PCIEDEV_TEST_BUFFER_ALLOCATION_FAILURE
+//#define PCIEDEV_TEST_MDEV_ALLOC_FAILURE
+
 #ifndef PCIEDEV_NR_DEVS
 #define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */
 #endif
@@ -64,11 +103,12 @@ struct pciedev_prj_info {
 };
 typedef struct pciedev_prj_info pciedev_prj_info;
 
-struct pciedev_cdev ;
+struct pciedev_cdev;
 struct pciedev_dev {
-   
+    char                name[64];       /**< Card name. */
     struct cdev         cdev;	  /* Char device structure      */
     struct mutex      dev_mut;            /* mutual exclusion semaphore */
+    
     struct pci_dev    *pciedev_pci_dev;
     int                        dev_num;
     int                        brd_num;
@@ -132,9 +172,10 @@ struct pciedev_dev {
     void                          *dev_str;
     
     struct pciedev_brd_info brd_info_list;
-    struct pciedev_prj_info  prj_info_list;
-    int                                 startup_brd;
-    int                                 startup_prj_num;
+    struct pciedev_prj_info prj_info_list;
+    int                     startup_brd;
+    int                     startup_prj_num;
+    
 };
 typedef struct pciedev_dev pciedev_dev;
 
@@ -172,6 +213,8 @@ int       pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev **, char *, int *
 int       pciedev_get_prjinfo(struct pciedev_dev *);
 int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
 int       pciedev_get_brdinfo(struct pciedev_dev *);
+
+int     pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
 #if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
 int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *, struct pt_regs *), struct pciedev_dev *, char *);

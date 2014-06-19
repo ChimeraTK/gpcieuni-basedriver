@@ -45,10 +45,10 @@ struct device_ioctrl_data  {
 typedef struct device_ioctrl_data device_ioctrl_data;
 
 struct device_ioctrl_dma  {
-        u_int    dma_offset;
+        u_int    dma_offset;    
         u_int    dma_size;
-        u_int    dma_cmd;          // value to DMA Control register
-        u_int    dma_pattern;     // DMA BAR num
+        u_int    dma_cmd;       // value to DMA Control register
+        u_int    dma_pattern;   // DMA BAR num
         u_int    dma_reserved1; // DMA Control register offset (31:16) DMA Length register offset (15:0)
         u_int    dma_reserved2; // DMA Read/Write Source register offset (31:16) Destination register offset (15:0)
 };
@@ -62,16 +62,16 @@ typedef struct device_ioctrl_time device_ioctrl_time;
 
 /* Use 'o' as magic number */
 #define PCIEDOOCS_IOC                               '0'
-#define PCIEDEV_PHYSICAL_SLOT              _IOWR(PCIEDOOCS_IOC, 60, int)
-#define PCIEDEV_DRIVER_VERSION           _IOWR(PCIEDOOCS_IOC, 61, int)
-#define PCIEDEV_FIRMWARE_VERSION    _IOWR(PCIEDOOCS_IOC, 62, int)
-#define PCIEDEV_GET_DMA_TIME               _IOWR(PCIEDOOCS_IOC, 70, int)
-#define PCIEDEV_WRITE_DMA                     _IOWR(PCIEDOOCS_IOC, 71, int)
-#define PCIEDEV_READ_DMA                       _IOWR(PCIEDOOCS_IOC, 72, int)
-#define PCIEDEV_SET_IRQ                            _IOWR(PCIEDOOCS_IOC, 73, int)
+#define PCIEDEV_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
+#define PCIEDEV_DRIVER_VERSION          _IOWR(PCIEDOOCS_IOC, 61, int)
+#define PCIEDEV_FIRMWARE_VERSION        _IOWR(PCIEDOOCS_IOC, 62, int)
+#define PCIEDEV_GET_DMA_TIME            _IOWR(PCIEDOOCS_IOC, 70, int)
+#define PCIEDEV_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
+#define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
+#define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR 74
+#define PCIEDOOCS_IOC_DMA_MAXNR  74
 
 #endif
