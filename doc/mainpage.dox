@@ -15,17 +15,17 @@ For debug build type:
     @endcode
 
 Make will automatically install shared files required by other modules to compile and install:
-- Module symbol file to /lib/modules/\<kernel version\>/upciedev/Upciedev.symvers
-- pciedev_io.h header file to /usr/local/include/upciedev/pciedev_io.h
-- pciedev_ufn.h header file to /usr/local/include/upciedev/pciedev_ufn.h
-- pciedev_buffer.h header file to /usr/local/include/upciedev/pciedev_buffer.h
+- Module symbol file to /lib/modules/\<kernel version\>/gpcieuni/Gpcieuni.symvers
+- pcieuni_io.h header file to /usr/local/include/gpcieuni/pcieuni_io.h
+- pcieuni_ufn.h header file to /usr/local/include/gpcieuni/pcieuni_ufn.h
+- pcieuni_buffer.h header file to /usr/local/include/gpcieuni/pcieuni_buffer.h
 
 @section install_run Install & run
 
 Type:
     @code
         make install
-        modprobe upciedev
+        modprobe gpcieuni
     @endcode
 
 @section parameters Module parameters
@@ -34,19 +34,19 @@ none
 @section Functionality
 
     @subsection driver-operations PCI driver operations
-    The upciedev module provides common implementation of PCI driver functions, including: 
-    - device probing: pciedev_probe_exp(), pciedev_remove_exp())
-    - common ioctl operations: pciedev_ioctl_exp()
-    - common read/write interface: pciedev_read_exp(), pciedev_write_exp()
+    The gpcieuni module provides common implementation of PCI driver functions, including: 
+    - device probing: pcieuni_probe_exp(), pcieuni_remove_exp())
+    - common ioctl operations: pcieuni_ioctl_exp()
+    - common read/write interface: pcieuni_read_exp(), pcieuni_write_exp()
 
     @subsection dma-bufferList Circular list of DMA buffers
-    The upciedev module provides implementation of circular list of buffers mapped to target PCI device. Such 
+    The gpcieuni module provides implementation of circular list of buffers mapped to target PCI device. Such 
     buffers can be used for DMA transfer from PCI device. The implmentation includes allocation and thread-safe
     manipulation of the buffer list. For details see:
-    - pciedev_buffer.h
-    - pciedev_buffer.c
+    - pcieuni_buffer.h
+    - pcieuni_buffer.c
 
     @subsection utility-functions Common utility functions
-    The upciedev module provides a set of utility functions. See file pciedev_ufn.c 
+    The gpcieuni module provides a set of utility functions. See file pcieuni_ufn.c 
     
 */

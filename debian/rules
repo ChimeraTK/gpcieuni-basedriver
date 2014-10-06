@@ -7,7 +7,7 @@ override_dh_auto_build:
 	:
 
 override_dh_auto_install:
-	dh_install upciedev_drv.c  pciedev_ioctl_exp.c  pciedev_remove_exp.c  pciedev_ufn.c pciedev_probe_exp.c pciedev_rw_exp.c pciedev_buffer.c /usr/src/upciedev-1/
-	dh_install pciedev_ufn.h  pciedev_io.h pciedev_buffer.h Makefile /usr/src/upciedev-1/
-	dh_install pciedev_io.h pciedev_ufn.h pciedev_buffer.h /usr/include/
+	dh_install gpcieuni_drv.c  pcieuni_ioctl_exp.c  pcieuni_remove_exp.c  pcieuni_ufn.c pcieuni_probe_exp.c pcieuni_rw_exp.c pcieuni_buffer.c /usr/src/gpcieuni-1/
+	dh_install pcieuni_ufn.h  pcieuni_io.h pcieuni_buffer.h Makefile /usr/src/gpcieuni-1/
+	dh_install pcieuni_io.h pcieuni_ufn.h pcieuni_buffer.h /usr/include/
 	dh_dkms

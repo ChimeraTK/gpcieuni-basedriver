@@ -2,10 +2,10 @@
 #include <linux/fs.h>	
 #include <asm/uaccess.h>
 
-#include "pciedev_ufn.h"
-#include "pciedev_io.h"
+#include "pcieuni_ufn.h"
+#include "pcieuni_io.h"
 
-ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
+ssize_t pcieuni_read_exp(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     u64        itemsize       = 0;
     ssize_t    retval         = 0;
@@ -25,12 +25,12 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     device_rw  reading;
     void*       address;
     
-    struct pciedev_dev *dev = filp->private_data;
+    struct pcieuni_dev *dev = filp->private_data;
     minor = dev->dev_minor;
     d_num = dev->dev_num;
     
     if(!dev->dev_sts){
-        printk("PCIEDEV_READ_EXP: NO DEVICE %d\n", dev->dev_num);
+        printk("PCIEUNI_READ_EXP: NO DEVICE %d\n", dev->dev_num);
         retval = -EFAULT;
         return retval;
     }
@@ -48,15 +48,15 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
       
     tmp_mode     = reading.mode_rw;
     if(tmp_mode == RW_INFO){
-        pci_read_config_byte(dev->pciedev_pci_dev, PCI_REVISION_ID, &tmp_revision);
-        reading.offset_rw = dev->parent_dev->PCIEDEV_DRV_VER_MIN;
-        reading.data_rw   = dev->parent_dev->PCIEDEV_DRV_VER_MAJ;
+        pci_read_config_byte(dev->pcieuni_pci_dev, PCI_REVISION_ID, &tmp_revision);
+        reading.offset_rw = dev->parent_dev->PCIEUNI_DRV_VER_MIN;
+        reading.data_rw   = dev->parent_dev->PCIEUNI_DRV_VER_MAJ;
         reading.mode_rw   = tmp_revision;
-        reading.barx_rw   = dev->pciedev_all_mems;
+        reading.barx_rw   = dev->pcieuni_all_mems;
         reading.size_rw   = dev->slot_num; /*SLOT NUM*/
         retval            = itemsize;
         if (copy_to_user(buf, &reading, count)) {
-             printk(KERN_ALERT "PCIEDEV_READ_EXP 3\n");
+             printk(KERN_ALERT "PCIEUNI_READ_EXP 3\n");
              retval = -EFAULT;
              mutex_unlock(&dev->dev_mut);
              retval = 0;
@@ -279,9 +279,9 @@ ssize_t pciedev_read_exp(struct file *filp, char __user *buf, size_t count, loff
     mutex_unlock(&dev->dev_mut);
     return retval;
 }
-EXPORT_SYMBOL(pciedev_read_exp);
+EXPORT_SYMBOL(pcieuni_read_exp);
 
-ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
+ssize_t pcieuni_write_exp(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
     device_rw       reading;
     int             itemsize       = 0;
@@ -299,12 +299,12 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
     u32             tmp_data_32;
     void            *address ;
    
-    struct pciedev_dev       *dev = filp->private_data;
+    struct pcieuni_dev       *dev = filp->private_data;
     minor = dev->dev_minor;
     d_num = dev->dev_num;
     
     if(!dev->dev_sts){
-        printk("PCIEDEV_WRITE_EXP: NO DEVICE %d\n", dev->dev_num);
+        printk("PCIEUNI_WRITE_EXP: NO DEVICE %d\n", dev->dev_num);
         retval = -EFAULT;
         return retval;
     }
@@ -436,4 +436,4 @@ ssize_t pciedev_write_exp(struct file *filp, const char __user *buf, size_t coun
     mutex_unlock(&dev->dev_mut);
     return retval;
 }
-EXPORT_SYMBOL(pciedev_write_exp);
+EXPORT_SYMBOL(pcieuni_write_exp);

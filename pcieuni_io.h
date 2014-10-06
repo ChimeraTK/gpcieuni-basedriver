@@ -1,5 +1,5 @@
-#ifndef _PCIEDEV_IO_H
-#define _PCIEDEV_IO_H
+#ifndef _PCIEUNI_IO_H
+#define _PCIEUNI_IO_H
 
 #include <linux/types.h>
 #include <linux/ioctl.h> /* needed for the _IOW etc stuff used later */
@@ -11,8 +11,8 @@
 #define RW_INFO    0x4
 #define DMA_DATA_OFFSET             6 
 #define DMA_DATA_OFFSET_BYTE  24
-#define PCIEDEV_DMA_SYZE                    4096
-#define PCIEDEV_DMA_MIN_SYZE           128
+#define PCIEUNI_DMA_SYZE                    4096
+#define PCIEUNI_DMA_MIN_SYZE           128
 
 #define IOCTRL_R      0x00
 #define IOCTRL_W     0x01
@@ -62,13 +62,13 @@ typedef struct device_ioctrl_time device_ioctrl_time;
 
 /* Use 'o' as magic number */
 #define PCIEDOOCS_IOC                               '0'
-#define PCIEDEV_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
-#define PCIEDEV_DRIVER_VERSION          _IOWR(PCIEDOOCS_IOC, 61, int)
-#define PCIEDEV_FIRMWARE_VERSION        _IOWR(PCIEDOOCS_IOC, 62, int)
-#define PCIEDEV_GET_DMA_TIME            _IOWR(PCIEDOOCS_IOC, 70, int)
-#define PCIEDEV_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
-#define PCIEDEV_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
-#define PCIEDEV_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
+#define PCIEUNI_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
+#define PCIEUNI_DRIVER_VERSION          _IOWR(PCIEDOOCS_IOC, 61, int)
+#define PCIEUNI_FIRMWARE_VERSION        _IOWR(PCIEDOOCS_IOC, 62, int)
+#define PCIEUNI_GET_DMA_TIME            _IOWR(PCIEDOOCS_IOC, 70, int)
+#define PCIEUNI_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
+#define PCIEUNI_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
+#define PCIEUNI_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
 #define PCIEDOOCS_IOC_MINNR  60
 #define PCIEDOOCS_IOC_MAXNR 63
 #define PCIEDOOCS_IOC_DMA_MINNR  70

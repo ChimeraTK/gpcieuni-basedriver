@@ -1,5 +1,5 @@
 #! /bin/sh
-# postinst script for upciedev-dkms
+# postinst script for gpcieuni-dkms
 #
 # see: dh_installdeb(1)
 
@@ -9,5 +9,5 @@
 
 #DEBHELPER#
 
-modprobe upciedev
+modprobe gpcieuni
 

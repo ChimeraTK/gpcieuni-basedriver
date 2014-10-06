@@ -3,10 +3,10 @@
 #include <linux/sched.h>
 #include <asm/uaccess.h>
 
-#include "pciedev_ufn.h"
-#include "pciedev_io.h"
+#include "pcieuni_ufn.h"
+#include "pcieuni_io.h"
 
-long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long *arg_p, pciedev_cdev * pciedev_cdev_m)
+long     pcieuni_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long *arg_p, pcieuni_cdev * pcieuni_cdev_m)
 {
     unsigned int    cmd;
     unsigned long arg;
@@ -23,7 +23,7 @@ long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
     u_int           tmp_reserved;
     int io_size;
     device_ioctrl_data  data;
-    struct pciedev_dev       *dev  = filp->private_data;
+    struct pcieuni_dev       *dev  = filp->private_data;
 
     cmd              = *cmd_p;
     arg                = *arg_p;
@@ -31,10 +31,10 @@ long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
     minor           = dev->dev_minor;
     d_num         = dev->dev_num;	
     cur_proc     = current->group_leader->pid;
-    pdev            = (dev->pciedev_pci_dev);
+    pdev            = (dev->pcieuni_pci_dev);
     
     if(!dev->dev_sts){
-        printk("PCIEDEV_IOCTRL: NO DEVICE %d\n", dev->dev_num);
+        printk("PCIEUNI_IOCTRL: NO DEVICE %d\n", dev->dev_num);
         retval = -EFAULT;
         return retval;
     }
@@ -55,7 +55,7 @@ long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
                     return -ERESTARTSYS;
 
     switch (cmd) {
-        case PCIEDEV_PHYSICAL_SLOT:
+        case PCIEUNI_PHYSICAL_SLOT:
             retval = 0;
             if (copy_from_user(&data, (device_ioctrl_data*)arg, (size_t)io_size)) {
                 retval = -EFAULT;
@@ -67,24 +67,24 @@ long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
             tmp_cmd      = data.cmd;
             tmp_reserved = data.reserved;
             data.data    = dev->slot_num;
-            data.cmd     = PCIEDEV_PHYSICAL_SLOT;
+            data.cmd     = PCIEUNI_PHYSICAL_SLOT;
             if (copy_to_user((device_ioctrl_data*)arg, &data, (size_t)io_size)) {
                 retval = -EFAULT;
                 mutex_unlock(&dev->dev_mut);
                 return retval;
             }
             break;
-        case PCIEDEV_DRIVER_VERSION:
-            data.data   =  pciedev_cdev_m->PCIEDEV_DRV_VER_MAJ;
-            data.offset =  pciedev_cdev_m->PCIEDEV_DRV_VER_MIN;
+        case PCIEUNI_DRIVER_VERSION:
+            data.data   =  pcieuni_cdev_m->PCIEUNI_DRV_VER_MAJ;
+            data.offset =  pcieuni_cdev_m->PCIEUNI_DRV_VER_MIN;
             if (copy_to_user((device_ioctrl_data*)arg, &data, (size_t)io_size)) {
                 retval = -EFAULT;
                 mutex_unlock(&dev->dev_mut);
                 return retval;
             }
             break;
-        case PCIEDEV_FIRMWARE_VERSION:
-            pci_read_config_byte(dev->pciedev_pci_dev, PCI_REVISION_ID, &tmp_revision);
+        case PCIEUNI_FIRMWARE_VERSION:
+            pci_read_config_byte(dev->pcieuni_pci_dev, PCI_REVISION_ID, &tmp_revision);
             data.data   = tmp_revision;
             data.offset = dev->revision;
             if (copy_to_user((device_ioctrl_data*)arg, &data, (size_t)io_size)) {
@@ -102,4 +102,4 @@ long     pciedev_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
     return retval;
     
 }
-EXPORT_SYMBOL(pciedev_ioctl_exp);
+EXPORT_SYMBOL(pcieuni_ioctl_exp);

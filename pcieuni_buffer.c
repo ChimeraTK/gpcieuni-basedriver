@@ -1,5 +1,5 @@
 /**
- *  @file   pciedev_buffer.c
+ *  @file   pcieuni_buffer.c
  *  @brief  Provides implementation of functions related to driver allocated list of DMA buffers                         
  */
 
@@ -9,8 +9,8 @@
 #include <linux/sched.h>
 #include <linux/dma-mapping.h>
 
-#include "pciedev_buffer.h"
-#include "pciedev_ufn.h"
+#include "pcieuni_buffer.h"
+#include "pcieuni_ufn.h"
 
 /**
  * @brief Initializes empty list of DMA buffers
@@ -20,7 +20,7 @@
  * 
  * @return void
  */
-void pciedev_bufferList_init(pciedev_buffer_list *bufferList, pciedev_dev *parentDev)
+void pcieuni_bufferList_init(pcieuni_buffer_list *bufferList, pcieuni_dev *parentDev)
 {
     bufferList->parentDev = parentDev;
     spin_lock_init(&bufferList->lock);
@@ -29,7 +29,7 @@ void pciedev_bufferList_init(pciedev_buffer_list *bufferList, pciedev_dev *paren
     bufferList->next = 0;
     bufferList->shutDownFlag = 0;
 }
-EXPORT_SYMBOL(pciedev_bufferList_init); 
+EXPORT_SYMBOL(pcieuni_bufferList_init); 
 
 /** 
  * @brief Creates DMA buffer and appends it to the target list of DMA buffers.
@@ -40,7 +40,7 @@ EXPORT_SYMBOL(pciedev_bufferList_init);
  * 
  * @return void
  */
-void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer)
+void pcieuni_bufferList_append(pcieuni_buffer_list* list, pcieuni_buffer* buffer)
 {
     spin_lock(&list->lock);
 
@@ -52,12 +52,12 @@ void pciedev_bufferList_append(pciedev_buffer_list* list, pciedev_buffer* buffer
 
     spin_unlock(&list->lock);    
 }
-EXPORT_SYMBOL(pciedev_bufferList_append);   
+EXPORT_SYMBOL(pcieuni_bufferList_append);   
 
 /** 
  * @brief Removes and releases all the DMA buffers from the list.
  * 
- * This function attempts to release all the resources held by DMA bufffers in a safe manner. It uses the pciedev_buffer_list::shutDownFlag
+ * This function attempts to release all the resources held by DMA bufffers in a safe manner. It uses the pcieuni_buffer_list::shutDownFlag
  * flag to disable other threads from using the buffers. If any bufffer appears to be in use this function will wait for up to 1 second for
  * operations on buffer to complete and then move on. If buffer is stuck in a busy mode it's memory won't be released (so memory will leak
  * in this case). 
@@ -68,10 +68,10 @@ EXPORT_SYMBOL(pciedev_bufferList_append);
  * 
  * @return void
  */
-void pciedev_bufferList_clear(pciedev_buffer_list* list)
+void pcieuni_bufferList_clear(pcieuni_buffer_list* list)
 {
     ulong timeout = HZ/1; // one second timeout
-    pciedev_buffer *buffer = 0;
+    pcieuni_buffer *buffer = 0;
     struct list_head *pos;
     struct list_head *tpos;
     int code;
@@ -81,23 +81,23 @@ void pciedev_bufferList_clear(pciedev_buffer_list* list)
     
     list_for_each_safe(pos, tpos, &list->head) 
     {
-        buffer = list_entry(pos, struct pciedev_buffer, list);
+        buffer = list_entry(pos, struct pcieuni_buffer, list);
         code = 1;
         
         while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
         {
             spin_unlock(&list->lock);
             
-            PDEBUG(list->parentDev->name, "pciedev_bufferList_clear(): Waiting for pending operations on buffer to complete...");
+            PDEBUG(list->parentDev->name, "pcieuni_bufferList_clear(): Waiting for pending operations on buffer to complete...");
             code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
             if (code == 0)
             {
-                printk(KERN_ALERT "PCIEDEV(%s): Timeout waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
+                printk(KERN_ALERT "PCIEUNI(%s): Timeout waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
                        list->parentDev->name);
             }
             else if (code < 0 )
             {
-                printk(KERN_ALERT "PCIEDEV(%s): Interrupted while waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
+                printk(KERN_ALERT "PCIEUNI(%s): Interrupted while waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
                        list->parentDev->name);
             }
             
@@ -108,18 +108,18 @@ void pciedev_bufferList_clear(pciedev_buffer_list* list)
         
         if (code > 0)
         {
-            pciedev_buffer_destroy(list->parentDev, buffer);
+            pcieuni_buffer_destroy(list->parentDev, buffer);
         }
         // else deleting buffer could be dangerous. Better have memory leak than kernel panic.
     }
     spin_unlock(&list->lock);
 }
-EXPORT_SYMBOL(pciedev_bufferList_clear);   
+EXPORT_SYMBOL(pcieuni_bufferList_clear);   
 
 /**
  *  @brief Allocates memory buffer for DMA transfers.
  * 
- * Allocates and initializes pciedev_buffer structure with corresponding contiguous block of memory that can be 
+ * Allocates and initializes pcieuni_buffer structure with corresponding contiguous block of memory that can be 
  * used for DMA data tranfer from device. 
  * @note Buffer size should be power of 2 and at least 4kB. Upper limit is system dependant, but anything bigger 
  * than 4MB is likely going to fail with -ENOMEM.
@@ -131,15 +131,15 @@ EXPORT_SYMBOL(pciedev_bufferList_clear);
  * @retval -ENOMEM  Allocation failed
  * 
  */
-pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long bufSize)
+pcieuni_buffer *pcieuni_buffer_create(struct pcieuni_dev *dev, unsigned long bufSize)
 {
-    pciedev_buffer *buffer;
+    pcieuni_buffer *buffer;
     unsigned long iter = 0;
     
-    PDEBUG(dev->name, "pciedev_buffer_create(bufSize=0x%lx)", bufSize);
+    PDEBUG(dev->name, "pcieuni_buffer_create(bufSize=0x%lx)", bufSize);
     
     // allocate the buffer structure
-    buffer = kzalloc(sizeof(pciedev_buffer), GFP_KERNEL);
+    buffer = kzalloc(sizeof(pcieuni_buffer), GFP_KERNEL);
     if (!buffer)
     {
         return ERR_PTR(-ENOMEM);
@@ -151,17 +151,17 @@ pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long buf
     set_bit(BUFFER_STATE_AVAILABLE, &buffer->state);
     clear_bit(BUFFER_STATE_WAITING, &buffer->state);
     
-#ifdef PCIEDEV_TEST_BUFFER_ALLOCATION_FAILURE
-    TEST_RANDOM_EXIT(2, "PCIEDEV: Simulating failed buffer allocation!", ERR_PTR(-ENOMEM))
+#ifdef PCIEUNI_TEST_BUFFER_ALLOCATION_FAILURE
+    TEST_RANDOM_EXIT(2, "PCIEUNI: Simulating failed buffer allocation!", ERR_PTR(-ENOMEM))
 #endif    
     
     // allocate memory block
     buffer->kaddr = __get_free_pages(GFP_KERNEL|__GFP_DMA, buffer->order);
     if (!buffer->kaddr) 
     {
-        printk(KERN_ERR "pciedev_buffer_create(): can't get free pages of order %u\n", buffer->order);
+        printk(KERN_ERR "pcieuni_buffer_create(): can't get free pages of order %u\n", buffer->order);
         
-        pciedev_buffer_destroy(dev, buffer);
+        pcieuni_buffer_destroy(dev, buffer);
         return ERR_PTR(-ENOMEM);
     }
     
@@ -172,36 +172,36 @@ pciedev_buffer *pciedev_buffer_create(struct pciedev_dev *dev, unsigned long buf
     }
     
     // map to pci_dev
-    buffer->dma_handle = dma_map_single(&dev->pciedev_pci_dev->dev, (void *)buffer->kaddr, buffer->size, DMA_FROM_DEVICE);
-    if (dma_mapping_error(&dev->pciedev_pci_dev->dev, buffer->dma_handle)) 
+    buffer->dma_handle = dma_map_single(&dev->pcieuni_pci_dev->dev, (void *)buffer->kaddr, buffer->size, DMA_FROM_DEVICE);
+    if (dma_mapping_error(&dev->pcieuni_pci_dev->dev, buffer->dma_handle)) 
     {
-        printk(KERN_ERR "pciedev_buffer_create(): dma mapping error\n");
-        pciedev_buffer_destroy(dev, buffer);
+        printk(KERN_ERR "pcieuni_buffer_create(): dma mapping error\n");
+        pcieuni_buffer_destroy(dev, buffer);
         return ERR_PTR(-ENOMEM);
     }    
     
-    printk(KERN_INFO "PCIEDEV(%s): Allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
+    printk(KERN_INFO "PCIEUNI(%s): Allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
     return buffer;
 }
-EXPORT_SYMBOL(pciedev_buffer_create);   
+EXPORT_SYMBOL(pcieuni_buffer_create);   
 
 /**
  * @brief Frees all resources allocated by DMA buffer. 
  * 
- * @param pciedev  PCI device that buffer is mapped to
+ * @param pcieuni  PCI device that buffer is mapped to
  * @param memblock Target buffer
  * 
  * @return void
  */
-void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer) 
+void pcieuni_buffer_destroy(struct pcieuni_dev *dev, pcieuni_buffer *buffer) 
 {
     unsigned long iter = 0;
     
-    PDEBUG(dev->name, "pciedev_buffer_destroy(buffer=%p)", buffer);
+    PDEBUG(dev->name, "pcieuni_buffer_destroy(buffer=%p)", buffer);
     
     if (!buffer)
     {
-        printk(KERN_ERR "PCIEDEV(%s): Got request to release unallocated buffer!\n", dev->name);
+        printk(KERN_ERR "PCIEUNI(%s): Got request to release unallocated buffer!\n", dev->name);
         return;
     }
     
@@ -210,7 +210,7 @@ void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer)
         // unmap from pci_dev
         if (buffer->dma_handle != DMA_ERROR_CODE)
         {
-            dma_unmap_single(&dev->pciedev_pci_dev->dev, buffer->dma_handle, buffer->size, DMA_FROM_DEVICE);
+            dma_unmap_single(&dev->pcieuni_pci_dev->dev, buffer->dma_handle, buffer->size, DMA_FROM_DEVICE);
         }
         
         // release allocated memory pages
@@ -223,7 +223,7 @@ void pciedev_buffer_destroy(struct pciedev_dev *dev, pciedev_buffer *buffer)
     
     kfree(buffer);
 }
-EXPORT_SYMBOL(pciedev_buffer_destroy);   
+EXPORT_SYMBOL(pcieuni_buffer_destroy);   
 
 /**
  * @brief Gives free (available) DMA buffer from the list of DMA buffers.
@@ -240,9 +240,9 @@ EXPORT_SYMBOL(pciedev_buffer_destroy);
  * @retval -BUSY    Timed out while waiting for available buffer 
  * @retval -ENOMEM  No buffers are allocated   
  */
-pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
+pcieuni_buffer* pcieuni_bufferList_get_free(pcieuni_buffer_list* list)
 {
-    pciedev_buffer *buffer = 0;
+    pcieuni_buffer *buffer = 0;
     ulong timeout = HZ/1; // one second timeout
     int code = 0;
     
@@ -253,12 +253,12 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
         return ERR_PTR(-ENOMEM);
     }
         
-    buffer = list_entry(list->next, struct pciedev_buffer, list);
+    buffer = list_entry(list->next, struct pcieuni_buffer, list);
     while (!test_bit(BUFFER_STATE_AVAILABLE, &buffer->state))
     {
         spin_unlock(&list->lock);
 
-        PDEBUG(list->parentDev->name, "pciedev_bufferList_get_free(): Waiting... ");
+        PDEBUG(list->parentDev->name, "pcieuni_bufferList_get_free(): Waiting... ");
         code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
         if (code == 0)
         {
@@ -272,7 +272,7 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
         spin_lock(&list->lock);
         if (list->shutDownFlag) return ERR_PTR(-EINTR);
         
-        buffer = list_entry(list->next, struct pciedev_buffer, list);
+        buffer = list_entry(list->next, struct pcieuni_buffer, list);
     }
     
     clear_bit(BUFFER_STATE_AVAILABLE, &buffer->state); // Buffer is now reserved
@@ -291,7 +291,7 @@ pciedev_buffer* pciedev_bufferList_get_free(pciedev_buffer_list* list)
     
     return buffer;
 }
-EXPORT_SYMBOL(pciedev_bufferList_get_free); 
+EXPORT_SYMBOL(pcieuni_bufferList_get_free); 
 
 /**
  * @brief Marks DMA buffer avaialble by settig the BUFFER_STATE_AVAILABLE flag and wakes up any waiters.
@@ -302,7 +302,7 @@ EXPORT_SYMBOL(pciedev_bufferList_get_free);
  * 
  * @return void
  */
-void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* buffer)
+void pcieuni_bufferList_set_free(pcieuni_buffer_list* list, pcieuni_buffer* buffer)
 {
     spin_lock(&list->lock);
     
@@ -314,4 +314,4 @@ void pciedev_bufferList_set_free(pciedev_buffer_list* list, pciedev_buffer* buff
     // Wake up any process waiting for free buffers
     wake_up_interruptible(&(list->waitQueue)); 
 }
-EXPORT_SYMBOL(pciedev_bufferList_set_free); 
+EXPORT_SYMBOL(pcieuni_bufferList_set_free); 

@@ -1,12 +1,12 @@
 /* 
- * File:   pciedev_ufn.h
+ * File:   pcieuni_ufn.h
  * Author: petros
  *
  * Created on February 18, 2013, 9:29 AM
  */
 
-#ifndef PCIEDEV_UFN_H
-#define	PCIEDEV_UFN_H
+#ifndef PCIEUNI_UFN_H
+#define	PCIEUNI_UFN_H
 
 #include <linux/version.h>
 #include <linux/pci.h>
@@ -15,7 +15,7 @@
 #include <linux/interrupt.h>
 
 /**
- * @def PCIEDEV_DEBUG 
+ * @def PCIEUNI_DEBUG 
  *
  * This define should be defined in debug build only. It controls the expansion of the PDEBUG macro.
  */ 
@@ -31,8 +31,8 @@
  * @param args  Message arguments (like with printk())  
  */ 
 #undef PDEBUG      
-#ifdef PCIEDEV_DEBUG
-#define PDEBUG(ctx, fmt, args...) printk( KERN_INFO "PCIEDEV(%s): " fmt, ctx, ## args)
+#ifdef PCIEUNI_DEBUG
+#define PDEBUG(ctx, fmt, args...) printk( KERN_INFO "PCIEUNI(%s): " fmt, ctx, ## args)
 #else
 #define PDEBUG(ctx, fmt, args...) 
 #endif
@@ -48,13 +48,13 @@
         return ret;                         \
     }                                       \
 }                                              
-//#define PCIEDEV_TEST_MISSING_INTERRUPT
-//#define PCIEDEV_TEST_DEVICE_DMA_BLOCKED
-//#define PCIEDEV_TEST_BUFFER_ALLOCATION_FAILURE
-//#define PCIEDEV_TEST_MDEV_ALLOC_FAILURE
+//#define PCIEUNI_TEST_MISSING_INTERRUPT
+//#define PCIEUNI_TEST_DEVICE_DMA_BLOCKED
+//#define PCIEUNI_TEST_BUFFER_ALLOCATION_FAILURE
+//#define PCIEUNI_TEST_MDEV_ALLOC_FAILURE
 
-#ifndef PCIEDEV_NR_DEVS
-#define PCIEDEV_NR_DEVS 15    /* pciedev0 through pciedev15 */
+#ifndef PCIEUNI_NR_DEVS
+#define PCIEUNI_NR_DEVS 15    /* pcieuni0 through pcieuni15 */
 #endif
 
 #define ASCII_BOARD_MAGIC_NUM         0x424F5244 /*BORD*/
@@ -83,33 +83,33 @@
 #define WORD_PROJ_IRQ_FLAGS            0x08
 #define WORD_PROJ_IRQ_CLR_FLAGSE  0x0C
 
-struct pciedev_brd_info {
-    u32 PCIEDEV_BOARD_ID;
-    u32 PCIEDEV_BOARD_VERSION;
-    u32 PCIEDEV_BOARD_DATE ; 
-    u32 PCIEDEV_HW_VERSION  ;
-    u32 PCIEDEV_BOARD_RESERVED  ;
-    u32 PCIEDEV_PROJ_NEXT  ;
+struct pcieuni_brd_info {
+    u32 PCIEUNI_BOARD_ID;
+    u32 PCIEUNI_BOARD_VERSION;
+    u32 PCIEUNI_BOARD_DATE ; 
+    u32 PCIEUNI_HW_VERSION  ;
+    u32 PCIEUNI_BOARD_RESERVED  ;
+    u32 PCIEUNI_PROJ_NEXT  ;
 };
-typedef struct pciedev_brd_info pciedev_brd_info;
+typedef struct pcieuni_brd_info pcieuni_brd_info;
 
-struct pciedev_prj_info {
+struct pcieuni_prj_info {
     struct list_head prj_list;
-    u32 PCIEDEV_PROJ_ID;
-    u32 PCIEDEV_PROJ_VERSION;
-    u32 PCIEDEV_PROJ_DATE ; 
-    u32 PCIEDEV_PROJ_RESERVED  ;
-    u32 PCIEDEV_PROJ_NEXT  ;
+    u32 PCIEUNI_PROJ_ID;
+    u32 PCIEUNI_PROJ_VERSION;
+    u32 PCIEUNI_PROJ_DATE ; 
+    u32 PCIEUNI_PROJ_RESERVED  ;
+    u32 PCIEUNI_PROJ_NEXT  ;
 };
-typedef struct pciedev_prj_info pciedev_prj_info;
+typedef struct pcieuni_prj_info pcieuni_prj_info;
 
-struct pciedev_cdev;
-struct pciedev_dev {
+struct pcieuni_cdev;
+struct pcieuni_dev {
     char                name[64];       /**< Card name. */
     struct cdev         cdev;	  /* Char device structure      */
     struct mutex      dev_mut;            /* mutual exclusion semaphore */
     
-    struct pci_dev    *pciedev_pci_dev;
+    struct pci_dev    *pcieuni_pci_dev;
     int                        dev_num;
     int                        brd_num;
     int                        dev_minor;
@@ -152,7 +152,7 @@ struct pciedev_dev {
     loff_t  rw_off4;
     loff_t  rw_off5;
     int      dev_dma_64mask;
-    int      pciedev_all_mems ;
+    int      pcieuni_all_mems ;
     int      dev_payload_size;
     void __iomem    *memmory_base0;
     void __iomem    *memmory_base1;
@@ -168,59 +168,59 @@ struct pciedev_dev {
     u8                         irq_pin;
     u32                       pci_dev_irq;
     
-    struct pciedev_cdev *parent_dev;
+    struct pcieuni_cdev *parent_dev;
     void                          *dev_str;
     
-    struct pciedev_brd_info brd_info_list;
-    struct pciedev_prj_info prj_info_list;
+    struct pcieuni_brd_info brd_info_list;
+    struct pcieuni_prj_info prj_info_list;
     int                     startup_brd;
     int                     startup_prj_num;
     
 };
-typedef struct pciedev_dev pciedev_dev;
+typedef struct pcieuni_dev pcieuni_dev;
 
-struct pciedev_cdev {
-    u16 UPCIEDEV_VER_MAJ;
-    u16 UPCIEDEV_VER_MIN;
-    u16 PCIEDEV_DRV_VER_MAJ;
-    u16 PCIEDEV_DRV_VER_MIN;
-    int   PCIEDEV_MAJOR ;     /* major by default */
-    int   PCIEDEV_MINOR  ;    /* minor by default */
+struct pcieuni_cdev {
+    u16 GPCIEUNI_VER_MAJ;
+    u16 GPCIEUNI_VER_MIN;
+    u16 PCIEUNI_DRV_VER_MAJ;
+    u16 PCIEUNI_DRV_VER_MIN;
+    int   PCIEUNI_MAJOR ;     /* major by default */
+    int   PCIEUNI_MINOR  ;    /* minor by default */
 
-    pciedev_dev                   *pciedev_dev_m[PCIEDEV_NR_DEVS];
-    struct class                    *pciedev_class;
-    struct proc_dir_entry     *pciedev_procdir;
-    int                                   pciedevModuleNum;
+    pcieuni_dev                   *pcieuni_dev_m[PCIEUNI_NR_DEVS];
+    struct class                    *pcieuni_class;
+    struct proc_dir_entry     *pcieuni_procdir;
+    int                                   pcieuniModuleNum;
 };
-typedef struct pciedev_cdev pciedev_cdev;
+typedef struct pcieuni_cdev pcieuni_cdev;
 
-int        pciedev_open_exp( struct inode *, struct file * );
-int        pciedev_release_exp(struct inode *, struct file *);
-ssize_t  pciedev_read_exp(struct file *, char __user *, size_t , loff_t *);
-ssize_t  pciedev_write_exp(struct file *, const char __user *, size_t , loff_t *);
-long     pciedev_ioctl_exp(struct file *, unsigned int* , unsigned long* , pciedev_cdev *);
+int        pcieuni_open_exp( struct inode *, struct file * );
+int        pcieuni_release_exp(struct inode *, struct file *);
+ssize_t  pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
+ssize_t  pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
+long     pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
 
-int        pciedev_procinfo(char *, char **, off_t, int, int *,void *);
-int        pciedev_set_drvdata(struct pciedev_dev *, void *);
-void*    pciedev_get_drvdata(struct pciedev_dev *);
-int        pciedev_get_brdnum(struct pci_dev *);
-pciedev_dev*   pciedev_get_pciedata(struct pci_dev *);
-void*    pciedev_get_baddress(int, struct pciedev_dev *);
+int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);
+int        pcieuni_set_drvdata(struct pcieuni_dev *, void *);
+void*    pcieuni_get_drvdata(struct pcieuni_dev *);
+int        pcieuni_get_brdnum(struct pci_dev *);
+pcieuni_dev*   pcieuni_get_pciedata(struct pci_dev *);
+void*    pcieuni_get_baddress(int, struct pcieuni_dev *);
 
-int       pciedev_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pciedev_cdev **, char *, int * );
-int       pciedev_remove_exp(struct pci_dev *dev, pciedev_cdev **, char *, int *);
+int       pcieuni_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pcieuni_cdev **, char *, int * );
+int       pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev **, char *, int *);
 
-int       pciedev_get_prjinfo(struct pciedev_dev *);
-int       pciedev_fill_prj_info(struct pciedev_dev *, void *);
-int       pciedev_get_brdinfo(struct pciedev_dev *);
+int       pcieuni_get_prjinfo(struct pcieuni_dev *);
+int       pcieuni_fill_prj_info(struct pcieuni_dev *, void *);
+int       pcieuni_get_brdinfo(struct pcieuni_dev *);
 
-int     pciedev_register_write32(struct pciedev_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
+int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
 #if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
-int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *, struct pt_regs *), struct pciedev_dev *, char *);
+int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), struct pcieuni_dev *, char *);
 #else
-int pciedev_setup_interrupt(irqreturn_t (*pciedev_interrupt)(int , void *), struct pciedev_dev *, char *);
+int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), struct pcieuni_dev *, char *);
 #endif
 
-#endif	/* PCIEDEV_UFN_H */
+#endif	/* PCIEUNI_UFN_H */
 

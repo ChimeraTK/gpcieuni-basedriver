@@ -1,6 +1,6 @@
-PACKAGE_NAME="upciedev"
+PACKAGE_NAME="gpcieuni"
 PACKAGE_VERSION="1"
-BUILT_MODULE_NAME[0]="upciedev"
+BUILT_MODULE_NAME[0]="gpcieuni"
 AUTOINSTALL="yes"
 MAKE[0]="make KVERSION=$kernelver"
 CLEAN="make clean"
