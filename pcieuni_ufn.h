@@ -13,6 +13,9 @@
 #include <linux/types.h>	/* size_t */
 #include <linux/cdev.h>
 #include <linux/interrupt.h>
+#include <linux/fs.h>	
+#include <linux/proc_fs.h>
+
 
 /**
  * @def PCIEUNI_DEBUG 
@@ -199,8 +202,6 @@ int        pcieuni_release_exp(struct inode *, struct file *);
 ssize_t  pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
 ssize_t  pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
 long     pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
-
-int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);
 int        pcieuni_set_drvdata(struct pcieuni_dev *, void *);
 void*    pcieuni_get_drvdata(struct pcieuni_dev *);
 int        pcieuni_get_brdnum(struct pci_dev *);
@@ -220,6 +221,17 @@ int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset,
 int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), struct pcieuni_dev *, char *);
 #else
 int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), struct pcieuni_dev *, char *);
+#endif
+
+void register_gpcieuni_proc(int num, char * dfn, struct pcieuni_dev     *p_upcie_dev, struct pcieuni_cdev     *p_upcie_cdev);
+void unregister_gpcieuni_proc(int num, char *dfn);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);
+#else
+    ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp );
+    static const struct file_operations gpcieuni_proc_fops = { 
+        .read = pcieuni_procinfo,
+    }; 
 #endif
 
 #endif	/* PCIEUNI_UFN_H */
