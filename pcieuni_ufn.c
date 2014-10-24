@@ -5,6 +5,17 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 
+/*
+#include <linux/kernel.h>
+#include <linux/proc_fs.h>
+#include <linux/sched.h>
+#include <linux/mm.h>
+#include <linux/slab.h>
+#include <asm/uaccess.h>
+#include <asm/types.h>
+*/
+
+
 #include "pcieuni_ufn.h"
 
 
@@ -25,15 +36,13 @@ EXPORT_SYMBOL(pcieuni_open_exp);
 
 int    pcieuni_release_exp(struct inode *inode, struct file *filp)
 {
-    int minor            = 0;
-    int d_num           = 0;
     u16 cur_proc     = 0;
     //struct pcieuni_dev *dev   = filp->private_data;
     //minor     = dev->dev_minor;
     //d_num   = dev->dev_num;
     cur_proc = current->group_leader->pid;
     //printk(KERN_ALERT "Close Procces is \"%s\" (pid %i)\n", current->comm, current->pid);
-    //printk(KERN_ALERT "Close MINOR %d DEV_NUM %d \n", minor, d_num);
+    //printk(KERN_ALERT "Close INODE %d FILE %d \n", inode, filp);
     return 0;
 }
 EXPORT_SYMBOL(pcieuni_release_exp);
@@ -284,14 +293,84 @@ int      pcieuni_get_prjinfo(struct pcieuni_dev  *bdev)
 }
 EXPORT_SYMBOL(pcieuni_get_prjinfo);
 
-int pcieuni_procinfo(char *buf, char **start, off_t fpos, int lenght, int *eof, void *data)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+    void register_gpcieuni_proc(int num, char * dfn, struct pcieuni_dev     *p_upcie_dev, struct pcieuni_cdev     *p_upcie_cdev)
+    {
+        char prc_entr[32];
+        sprintf(prc_entr, "%ss%i", dfn, num);
+        p_upcie_cdev->pcieuni_procdir = create_proc_entry(prc_entr, S_IFREG | S_IRUGO, 0);
+        p_upcie_cdev->pcieuni_procdir->read_proc = pcieuni_procinfo;
+        p_upcie_cdev->pcieuni_procdir->data = p_upcie_dev;
+    }
+
+    void unregister_gpcieuni_proc(int num, char *dfn)
+    {
+        char prc_entr[32];
+        sprintf(prc_entr, "%ss%i", dfn, num);
+        remove_proc_entry(prc_entr,0);
+    }
+
+    int pcieuni_procinfo(char *buf, char **start, off_t fpos, int lenght, int *eof, void *data)
+    {
+        char *p;
+        pcieuni_dev     *pcieuni_dev_m ;
+        struct list_head *pos;
+        struct pcieuni_prj_info  *tmp_prj_info_list;
+
+        pcieuni_dev_m = (pcieuni_dev*)data;
+        p = buf;
+        p += sprintf(p,"GPCIEUNI Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ, 
+                                                                                   pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);
+        p += sprintf(p,"Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MAJ, 
+                                                                                   pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MIN);
+        p += sprintf(p,"Board NUM:\t%i\n", pcieuni_dev_m->brd_num);
+        p += sprintf(p,"Slot    NUM:\t%i\n", pcieuni_dev_m->slot_num);
+        p += sprintf(p,"Board ID:\t%X\n", pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_ID);
+        p += sprintf(p,"Board Version;\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_VERSION);
+        p += sprintf(p,"Board Date:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_DATE);
+        p += sprintf(p,"Board HW Ver:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_HW_VERSION);
+        p += sprintf(p,"Board Next Prj:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_PROJ_NEXT);
+        p += sprintf(p,"Board Reserved:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_RESERVED);
+        p += sprintf(p,"Number of Proj:\t%i\n", pcieuni_dev_m->startup_prj_num);
+
+        list_for_each(pos,  &pcieuni_dev_m->prj_info_list.prj_list ){
+            tmp_prj_info_list = list_entry(pos, struct pcieuni_prj_info, prj_list);
+            p += sprintf(p,"Project ID:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_ID);
+            p += sprintf(p,"Project Version:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_VERSION);
+            p += sprintf(p,"Project Date:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_DATE);
+            p += sprintf(p,"Project Reserver:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_RESERVED);
+            p += sprintf(p,"Project Next:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
+        }
+
+        *eof = 1;
+        return p - buf;
+    }
+#else
+    void register_gpcieuni_proc(int num, char * dfn, struct pcieuni_dev     *p_upcie_dev, struct pcieuni_cdev     *p_upcie_cdev)
+    {
+        char prc_entr[32];
+        sprintf(prc_entr, "%ss%i", dfn, num);
+        p_upcie_cdev->pcieuni_procdir = proc_create_data(prc_entr, S_IFREG | S_IRUGO, 0, &gpcieuni_proc_fops, p_upcie_dev); 
+    }
+
+    void unregister_gpcieuni_proc(int num, char *dfn)
+    {
+        char prc_entr[32];
+        sprintf(prc_entr, "%ss%i", dfn, num);
+        remove_proc_entry(prc_entr,0);
+    }
+
+   ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp)
 {
     char *p;
+    int cnt = 0;
     pcieuni_dev     *pcieuni_dev_m ;
     struct list_head *pos;
     struct pcieuni_prj_info  *tmp_prj_info_list;
+    pcieuni_dev_m=PDE_DATA(file_inode(filp));
+        
+    printk(KERN_INFO "PCIEUNI_PROC_INFO CALLEDi\n");
 
-    pcieuni_dev_m = (pcieuni_dev*)data;
     p = buf;
     p += sprintf(p,"GPCIEUNI Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ, 
                                                                                pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);
@@ -315,15 +394,14 @@ int pcieuni_procinfo(char *buf, char **start, off_t fpos, int lenght, int *eof, 
         p += sprintf(p,"Project Reserver:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_RESERVED);
         p += sprintf(p,"Project Next:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
     }
- /* 
-    p += sprintf(p,"Proj ID:\t%i\n", PCIEUNI_PROJ_ID);
-    p += sprintf(p,"Proj Version;\t%i\n",PCIEUNI_PROJ_VR);
-    p += sprintf(p,"Proj Date:\t%i\n",PCIEUNI_PROJ_DT);
-*/
 
-    *eof = 1;
-    return p - buf;
+    p += sprintf(p,"\0");
+    cnt = strlen(p);
+    printk(KERN_INFO "PCIEUNI_PROC_INFO: PROC LEN%i\n", cnt);
+    copy_to_user(buf,p, (size_t)cnt);
+    return cnt;
 }
+#endif
 EXPORT_SYMBOL(pcieuni_procinfo);
 
 /**
