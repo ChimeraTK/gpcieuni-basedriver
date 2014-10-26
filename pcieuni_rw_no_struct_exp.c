@@ -10,7 +10,8 @@
 #define DEFINE_BAR_START_AND_SIZE( BAR )\
   case BAR:\
     barStart = deviceData->memmory_base  ## BAR ;\
-    barSizeInBytes = deviceData->mem_base ## BAR ## _end - deviceData->mem_base ## BAR;
+    barSizeInBytes = deviceData->mem_base ## BAR ## _end - deviceData->mem_base ## BAR;\
+    break;
 
 ssize_t pcieuni_read_no_struct_exp(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
