@@ -49,7 +49,8 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
     return -EFAULT;
   }
 
-  printk("gpcieuni::checkAndCalculateTransferInformation: count %zx , virtualOffsets %Lx\n", count, virtualOffset );
+  /*  printk("gpcieuni::checkAndCalculateTransferInformation: count %zx , virtualOffsets %Lx\n", count, virtualOffset );
+   */
 
   /* Before locking the mutex check if the request is valid (do not write after the end of the bar). */
   /* Do not access the registers, only check the pointer values without locking the mutex! */
@@ -59,9 +60,10 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
   /* mask out the bar position from the offset */
   transferInformation->offset = virtualOffset & 0x0FFFFFFFFFFFFFFFL;
   
-  printk("gpcieuni::checkAndCalculateTransferInformation: bar %x, offset %lx\n",
+  /*  printk("gpcieuni::checkAndCalculateTransferInformation: bar %x, offset %lx\n",
 	    transferInformation->bar,
 	    transferInformation->offset);  
+  */
 
   /* get the bar's start and end address */
   /* FIXME: organise the information as arrays, not as individual variables, and you might get rid of this block */
@@ -81,9 +83,11 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
   transferInformation->barEnd = transferInformation->barStart + 
     transferInformation->barSizeInBytes/sizeof(u32);
 
+  /*
   printk("gpcieuni::checkAndCalculateTransferInformation: barStart %p, barSize %lx, barEnd %p\n",
 	    transferInformation->barStart, transferInformation->barSizeInBytes,
 	    transferInformation->barEnd);  
+  */
 
   /* check that writing does not start after the end of the bar */
   if ( transferInformation->offset > transferInformation->barSizeInBytes ){
@@ -98,8 +102,10 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
       transferInformation->barSizeInBytes - transferInformation->offset  :
       count);
 
+  /*
   printk("gpcieuni::checkAndCalculateTransferInformation:  nBytesToTransfer %x, count %lx",
 	 transferInformation->nBytesToTransfer, count);
+  */
 
   return 0;
 }
