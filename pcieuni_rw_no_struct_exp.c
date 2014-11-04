@@ -15,6 +15,8 @@
 
 /** A struct which contains information about the transfer which is to be performed.
  *  Used to get data out of a common calculate and check function for read and write.
+ *  Not all variables are needed later, but they are kept in case they are needed in future
+ *  because they have to be calculated anyway for the checks.
  */
 typedef struct _transfer_information{
   unsigned int bar;
@@ -420,12 +422,12 @@ ssize_t pcieuni_write_no_struct_exp(struct file *filp, const char __user *buf, s
 
   /* first implementation: a stupid loop, but inside the kernel space to
      safe the many context changes if the loop was in user space */
-  nBytesActuallyTransferred = 0;
   { /* keep the variables local */
-    unsigned int i;
     u32 inputWord;
-    for( i = 0; i < transferInformation.nBytesToTransfer/sizeof(u32); ++i ){
+    for( nBytesActuallyTransferred = 0; nBytesActuallyTransferred < transferInformation.nBytesToTransfer;
+	 nBytesActuallyTransferred += sizeof(u32) ){
       
+      // buf is a char buffer, so we add the size in bytes
       if (copy_from_user(&inputWord, buf + nBytesActuallyTransferred, sizeof(u32)) ){
 	/* copying the user input failed. report back the number of actually written bytes.
 	 */
@@ -433,9 +435,8 @@ ssize_t pcieuni_write_no_struct_exp(struct file *filp, const char __user *buf, s
 	*f_pos += nBytesActuallyTransferred;
 	return nBytesActuallyTransferred;
       }
-      /* bar start is a 32 bit pointer. It increased by i words */
-      iowrite32(inputWord, transferInformation.barStart+  (transferInformation.offset/sizeof(u32)) + i );
-      nBytesActuallyTransferred += sizeof(u32);
+      /* bar start is a 32 bit pointer. It increased by number of words, not bytes */
+      iowrite32(inputWord, transferInformation.barStart + (transferInformation.offset + nBytesActuallyTransferred)/sizeof(u32) );
       /* fixme: the write barrier is here in the original code because there only is
 	 one transfer. I think it could be moved after the end of the loop. */
       wmb();
