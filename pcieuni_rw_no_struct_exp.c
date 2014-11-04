@@ -9,9 +9,98 @@
    the case of the switch statement to save typing. */
 #define DEFINE_BAR_START_AND_SIZE( BAR )\
   case BAR:\
-    barStart = deviceData->memmory_base  ## BAR ;\
-    barSizeInBytes = deviceData->mem_base ## BAR ## _end - deviceData->mem_base ## BAR;\
+    transferInformation->barStart = deviceData->memmory_base  ## BAR ;\
+    transferInformation->barSizeInBytes = deviceData->mem_base ## BAR ## _end - deviceData->mem_base ## BAR;\
     break;
+
+/** A struct which contains information about the transfer which is to be performed.
+ *  Used to get data out of a common calculate and check function for read and write.
+ */
+typedef struct _transfer_information{
+  unsigned int bar;
+  unsigned long offset; /* offset inside the bar */
+  unsigned long barSizeInBytes;
+  u32 * barStart, * barEnd;
+  unsigned int nBytesToTransfer;
+} transfer_information;
+
+/** Checks the input and calculates the transfer information.
+ *  Returns a negative value in case of error, 0 upon success.
+ */
+int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
+					  size_t count, loff_t virtualOffset,
+					  transfer_information * transferInformation ){
+
+  /* check that the device is there (what the f* is sts?)*/
+  if(!deviceData->dev_sts){
+    printk("PCIEUNI_WRITE_EXP: NO DEVICE %d\n", deviceData->dev_num);
+    return -EFAULT;
+  }
+
+  /* check the input data. Only 32 bit reads are supported */
+  if ( virtualOffset%4 ){
+    printk("%s\n", "Incorrect position, has the be a multiple of 4");
+    return -EFAULT;
+  }
+  if ( count%4 ){
+    printk("%s\n", "Incorrect size, has the be a multiple of 4");
+    return -EFAULT;
+  }
+
+  printk("gpcieuni::checkAndCalculateTransferInformation: count %zx , virtualOffsets %Lx\n", count, virtualOffset );
+
+  /* Before locking the mutex check if the request is valid (do not write after the end of the bar). */
+  /* Do not access the registers, only check the pointer values without locking the mutex! */
+  
+  /* determine the bar from the f_pos */
+  transferInformation->bar = (virtualOffset >> 60) & 0x7;
+  /* mask out the bar position from the offset */
+  transferInformation->offset = virtualOffset & 0x0FFFFFFFFFFFFFFFL;
+  
+  printk("gpcieuni::checkAndCalculateTransferInformation: bar %x, offset %lx\n",
+	    transferInformation->bar,
+	    transferInformation->offset);  
+
+  /* get the bar's start and end address */
+  /* FIXME: organise the information as arrays, not as individual variables, and you might get rid of this block */
+  switch (transferInformation->bar){
+    DEFINE_BAR_START_AND_SIZE( 0 );
+    DEFINE_BAR_START_AND_SIZE( 1 );
+    DEFINE_BAR_START_AND_SIZE( 2 );
+    DEFINE_BAR_START_AND_SIZE( 3 );
+    DEFINE_BAR_START_AND_SIZE( 4 );
+    DEFINE_BAR_START_AND_SIZE( 5 );
+
+  default:
+    printk("PCIEUNI_WRITE_NO_STRUCT_EXP: Invalid bar number %d\n", transferInformation->bar);
+    return -EFAULT;
+  }
+  /* When adding to a pointer, the + operator expects number of items, not the size in bytes */
+  transferInformation->barEnd = transferInformation->barStart + 
+    transferInformation->barSizeInBytes/sizeof(u32);
+
+  printk("gpcieuni::checkAndCalculateTransferInformation: barStart %p, barSize %lx, barEnd %p\n",
+	    transferInformation->barStart, transferInformation->barSizeInBytes,
+	    transferInformation->barEnd);  
+
+  /* check that writing does not start after the end of the bar */
+  if ( transferInformation->offset > transferInformation->barSizeInBytes ){
+    printk("%s\n", "Cannot start writing after the end of the bar.");
+    return -EFAULT;
+  }
+
+  /* limit the number of transferred by to the end of the bar. */
+  /* The second line is safe because we checked before that offset <= barSizeInBytes */
+  transferInformation->nBytesToTransfer = 
+    ( (transferInformation->barSizeInBytes < transferInformation->offset + count) ?
+      transferInformation->barSizeInBytes - transferInformation->offset  :
+      count);
+
+  printk("gpcieuni::checkAndCalculateTransferInformation:  nBytesToTransfer %x, count %lx",
+	 transferInformation->nBytesToTransfer, count);
+
+  return 0;
+}
 
 ssize_t pcieuni_read_no_struct_exp(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
@@ -306,69 +395,22 @@ ssize_t pcieuni_write_no_struct_exp(struct file *filp, const char __user *buf, s
     void            *address ;
   */
   struct pcieuni_dev *deviceData;
-  unsigned int bar;
-  unsigned long offset; /* offset inside the bar */
-  unsigned long barSizeInBytes;
-  u32 * barStart, * barEnd;
-  unsigned int nBytesToTransfer;
+  transfer_information transferInformation;
+  int transferInfoError;
   unsigned int nBytesActuallyTransferred;
 
   deviceData = filp->private_data;
+
+  /* The checkAndCalculateTransferInformation is only accessing static data in the 
+     deviceData struct. No need to hold the mutex.
+     FIXME: Is this correct? What if the device goes offline in the mean time?
+  */
+  transferInfoError = 
+    checkAndCalculateTransferInformation( deviceData,count, *f_pos, &transferInformation);
   
-  /* ### sanity and input checks ### */
-
-  /* check that the device is there (what the f* is sts?)*/
-  if(!deviceData->dev_sts){
-    printk("PCIEUNI_WRITE_EXP: NO DEVICE %d\n", deviceData->dev_num);
-    return -EFAULT;
+  if (transferInfoError){
+    return transferInfoError;
   }
-
-  /* check the input data. Only 32 bit reads are supported */
-  if ( ((unsigned long)*f_pos)%4 ){
-    printk("%s\n", "Incorrect position, has the be a multiple of 4");
-    return -EFAULT;
-  }
-  if ( count%4 ){
-    printk("%s\n", "Incorrect size, has the be a multiple of 4");
-    return -EFAULT;
-  }
-
-  /* Before locking the mutex check if the request is valid (do not write after the end of the bar). */
-  /* Do not access the registers, only check the pointer values without locking the mutex! */
-  
-  /* determine the bar from the f_pos */
-  bar = (*f_pos >> 60) & 0x7;
-  /* mask out the bar position from the offset */
-  offset = *f_pos & 0x0FFFFFFFFFFFFFFFL;
-  
-  /* get the bar's start and end address */
-  /* FIXME: organise the information as arrays, not as individual variables, and you might get rid of this block */
-  switch (bar){
-    DEFINE_BAR_START_AND_SIZE( 0 );
-    DEFINE_BAR_START_AND_SIZE( 1 );
-    DEFINE_BAR_START_AND_SIZE( 2 );
-    DEFINE_BAR_START_AND_SIZE( 3 );
-    DEFINE_BAR_START_AND_SIZE( 4 );
-    DEFINE_BAR_START_AND_SIZE( 5 );
-
-  default:
-    printk("PCIEUNI_WRITE_NO_STRUCT_EXP: Invalid bar number %d\n", bar);
-    return -EFAULT;
-  }
-  /* When adding to a pointer, the + operator expects number of items, not the size in bytes */
-  barEnd = barStart + barSizeInBytes/sizeof(u32);
-
-  /* check that writing does not start after the end of the bar */
-  if ( offset > barSizeInBytes ){
-    printk("%s\n", "Cannot start writing after the end of the bar.");
-    return -EFAULT;
-  }
-
-  /* limit the number of transferred by to the end of the bar. */
-  /* The second line is safe because we checked before that offset <= barSizeInBytes */
-  nBytesToTransfer = ( barSizeInBytes < offset + count ?
-		       barSizeInBytes - offset  :
-		       count);
 
   /* now we really want to access, so we need the mutex */
   if (mutex_lock_interruptible(&deviceData->dev_mut)) {
@@ -382,16 +424,17 @@ ssize_t pcieuni_write_no_struct_exp(struct file *filp, const char __user *buf, s
   { /* keep the variables local */
     unsigned int i;
     u32 inputWord;
-    for( i = 0; i < nBytesToTransfer/sizeof(u32); ++i ){
+    for( i = 0; i < transferInformation.nBytesToTransfer/sizeof(u32); ++i ){
       
       if (copy_from_user(&inputWord, buf + nBytesActuallyTransferred, sizeof(u32)) ){
 	/* copying the user input failed. report back the number of actually written bytes.
 	 */
 	mutex_unlock(&deviceData->dev_mut);
+	*f_pos += nBytesActuallyTransferred;
 	return nBytesActuallyTransferred;
       }
       /* bar start is a 32 bit pointer. It increased by i words */
-      iowrite32(inputWord, barStart+i);
+      iowrite32(inputWord, transferInformation.barStart+  (transferInformation.offset/sizeof(u32)) + i );
       nBytesActuallyTransferred += sizeof(u32);
       /* fixme: the write barrier is here in the original code because there only is
 	 one transfer. I think it could be moved after the end of the loop. */
@@ -400,6 +443,7 @@ ssize_t pcieuni_write_no_struct_exp(struct file *filp, const char __user *buf, s
   }/* end of local variable space */
 
   mutex_unlock(&deviceData->dev_mut);
+  *f_pos += nBytesActuallyTransferred;
   return nBytesActuallyTransferred;
 }
 EXPORT_SYMBOL(pcieuni_write_no_struct_exp);
