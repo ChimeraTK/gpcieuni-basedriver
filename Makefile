@@ -1,5 +1,5 @@
 gpcieuni-objs := gpcieuni_drv.o pcieuni_ufn.o pcieuni_probe_exp.o \
-	pcieuni_remove_exp.o pcieuni_rw_exp.o pcieuni_rw_no_struct_exp.o pcieuni_ioctl_exp.o pcieuni_buffer.o
+	pcieuni_remove_exp.o pcieuni_rw_no_struct_exp.o pcieuni_ioctl_exp.o pcieuni_buffer.o
 obj-m := gpcieuni.o 
 
 KVERSION = $(shell uname -r)
@@ -27,4 +27,4 @@ debug:
 
 clean:
 	test ! -d /lib/modules/$(KVERSION) || make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean
-
+	rm -rf Gpcieuni.symvers
