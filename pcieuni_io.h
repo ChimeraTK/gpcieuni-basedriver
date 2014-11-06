@@ -4,37 +4,7 @@
 #include <linux/types.h>
 #include <linux/ioctl.h> /* needed for the _IOW etc stuff used later */
 
-#define RW_D8        0x0
-#define RW_D16      0x1
-#define RW_D32      0x2
-#define RW_DMA     0x3
-#define RW_INFO    0x4
-#define DMA_DATA_OFFSET             6 
-#define DMA_DATA_OFFSET_BYTE  24
 #define PCIEUNI_DMA_SYZE                    4096
-#define PCIEUNI_DMA_MIN_SYZE           128
-
-#define IOCTRL_R      0x00
-#define IOCTRL_W     0x01
-#define IOCTRL_ALL  0x02
-
-#define BAR0 0
-#define BAR1 1
-#define BAR2 2
-#define BAR3 3
-#define BAR4 4
-#define BAR5 5
-
-/* generic register access */
-struct device_rw  {
-       u_int            offset_rw; /* offset in address                       */
-       u_int            data_rw;   /* data to set or returned read data       */
-       u_int            mode_rw;   /* mode of rw (RW_D8, RW_D16, RW_D32)      */
-       u_int            barx_rw;   /* BARx (0, 1, 2, 3, 4, 5)                 */
-       u_int            size_rw;   /* transfer size in bytes                  */             
-       u_int            rsrvd_rw;  /* transfer size in bytes                  */
-};
-typedef struct device_rw device_rw;
 
 struct device_ioctrl_data  {
         u_int    offset;
@@ -60,18 +30,35 @@ struct device_ioctrl_time  {
 };
 typedef struct device_ioctrl_time device_ioctrl_time;
 
-/* Use 'o' as magic number */
-#define PCIEDOOCS_IOC                               '0'
-#define PCIEUNI_PHYSICAL_SLOT           _IOWR(PCIEDOOCS_IOC, 60, int)
-#define PCIEUNI_DRIVER_VERSION          _IOWR(PCIEDOOCS_IOC, 61, int)
-#define PCIEUNI_FIRMWARE_VERSION        _IOWR(PCIEDOOCS_IOC, 62, int)
-#define PCIEUNI_GET_DMA_TIME            _IOWR(PCIEDOOCS_IOC, 70, int)
-#define PCIEUNI_WRITE_DMA               _IOWR(PCIEDOOCS_IOC, 71, int)
-#define PCIEUNI_READ_DMA                _IOWR(PCIEDOOCS_IOC, 72, int)
-#define PCIEUNI_SET_IRQ                 _IOWR(PCIEDOOCS_IOC, 73, int)
-#define PCIEDOOCS_IOC_MINNR  60
-#define PCIEDOOCS_IOC_MAXNR 63
-#define PCIEDOOCS_IOC_DMA_MINNR  70
-#define PCIEDOOCS_IOC_DMA_MAXNR  74
+/** Information about the offsets of the bars in the address space of the character device.
+ */
+static const loff_t PCIEUNI_BAR_OFFSETS[6] = { 0L,
+					       (1L) << 60,
+					       (2L) << 60,
+					       (3L) << 60,
+					       (4L) << 60,
+					       (5L) << 60 };
+
+/** Information about the bar sizes. It is retrieved via IOCTL.
+ */
+typedef struct _pcieuni_ioctl_bar_sizes{
+  size_t barSizes[6]; /** Sizes of bar 0 to 5*/
+  size_t dmaAreaSize; /** Size of the address range which can transferred via DMA.*/
+} pcieuni_ioctl_bar_sizes;
+
+/* Use 'U' like pcieUni as magic number */
+#define PCIEUNI_IOC                               'U'
+/* relative to the new IOC we keep the same ioctls as upciedev*/
+#define PCIEUNI_PHYSICAL_SLOT           _IOWR(PCIEUNI_IOC, 60, int)
+#define PCIEUNI_DRIVER_VERSION          _IOWR(PCIEUNI_IOC, 61, int)
+#define PCIEUNI_FIRMWARE_VERSION        _IOWR(PCIEUNI_IOC, 62, int)
+#define PCIEUNI_GET_DMA_TIME            _IOWR(PCIEUNI_IOC, 70, int)
+#define PCIEUNI_WRITE_DMA               _IOWR(PCIEUNI_IOC, 71, int)
+#define PCIEUNI_READ_DMA                _IOWR(PCIEUNI_IOC, 72, int)
+#define PCIEUNI_SET_IRQ                 _IOWR(PCIEUNI_IOC, 73, int)
+#define PCIEUNI_IOC_MINNR  60
+#define PCIEUNI_IOC_MAXNR 63
+#define PCIEUNI_IOC_DMA_MINNR  70
+#define PCIEUNI_IOC_DMA_MAXNR  74
 
 #endif

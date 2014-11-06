@@ -217,7 +217,12 @@ int       pcieuni_get_brdinfo(struct pcieuni_dev *);
 
 int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
-#if LINUX_VERSION_CODE < 0x20613 // irq_handler_t has changed in 2.6.19
+/** posix style read function without struct */
+ssize_t  pcieuni_read_no_struct_exp(struct file *, char __user *, size_t , loff_t *);
+/** posix style write function without struct */
+ssize_t  pcieuni_write_no_struct_exp(struct file *, const char __user *, size_t , loff_t *);
+
+#if LINUX_VERSION_CODE < 0x20613 /* irq_handler_t has changed in 2.6.19 */
 int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), struct pcieuni_dev *, char *);
 #else
 int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), struct pcieuni_dev *, char *);
