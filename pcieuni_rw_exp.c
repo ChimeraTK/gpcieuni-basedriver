@@ -160,7 +160,6 @@ ssize_t pcieuni_read_exp(struct file *filp, char __user *buf, size_t count, loff
                     tmp_offset = (tmp_offset/sizeof(u32))*sizeof(u32);
                     tmp_data_32       = ioread32(address + tmp_offset);
                     rmb();
-                    
                     reading.data_rw   = tmp_data_32 & 0xFFFFFFFF;
                     retval = itemsize;
                     break;
