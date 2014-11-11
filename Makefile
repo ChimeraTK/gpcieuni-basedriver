@@ -5,6 +5,7 @@ obj-m := gpcieuni.o
 KVERSION = $(shell uname -r)
 all:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) modules
+install: all
 	test -d /lib/modules/$(KVERSION)/gpcieuni || sudo mkdir -p /lib/modules/$(KVERSION)/gpcieuni
 	sudo cp -f $(PWD)/Module.symvers /lib/modules/$(KVERSION)/gpcieuni/Gpcieuni.symvers
 	cp -f $(PWD)/Module.symvers $(PWD)/Gpcieuni.symvers

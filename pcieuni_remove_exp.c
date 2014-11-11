@@ -117,7 +117,9 @@ int pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev  **pcieuni_cdev_p, char
                pcieuni_cdev_m->PCIEUNI_MAJOR, (pcieuni_cdev_m->PCIEUNI_MINOR + pcieunidev->brd_num));
     device_destroy(pcieuni_cdev_m->pcieuni_class,  MKDEV(pcieuni_cdev_m->PCIEUNI_MAJOR, 
                                                   pcieuni_cdev_m->PCIEUNI_MINOR + pcieunidev->brd_num));
-    remove_proc_entry(prc_entr,0);
+    
+    unregister_gpcieuni_proc(tmp_slot_num, dev_name);
+   // remove_proc_entry(prc_entr,0);
     
     pcieunidev->dev_sts   = 0;
     pcieuni_cdev_m->pcieuniModuleNum --;

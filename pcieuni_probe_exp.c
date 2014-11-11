@@ -57,7 +57,7 @@ int    pcieuni_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
             printk(KERN_ALERT "AFTER_INIT CREATE CDEV STRUCT NO MEM\n");
             return -ENOMEM;
         }
-         *pcieuni_cdev_pp = pcieuni_cdev_p;
+        *pcieuni_cdev_pp = pcieuni_cdev_p;
         pcieuni_cdev_p->PCIEUNI_MAJOR             = 47;
         pcieuni_cdev_p->PCIEUNI_MINOR             = 0;
         pcieuni_cdev_p->pcieuniModuleNum         = 0;
@@ -393,10 +393,9 @@ int    pcieuni_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
                   MKDEV(pcieuni_cdev_p->PCIEUNI_MAJOR, pcieuni_cdev_p->PCIEUNI_MINOR + m_brdNum),
                   &m_pcieuni_dev_p->pcieuni_pci_dev->dev, m_pcieuni_dev_p->name);
 
-    pcieuni_cdev_p->pcieuni_procdir                     = create_proc_entry(prc_entr, S_IFREG | S_IRUGO, 0);
-    pcieuni_cdev_p->pcieuni_procdir->read_proc  = pcieuni_procinfo;
-    pcieuni_cdev_p->pcieuni_procdir->data           = m_pcieuni_dev_p;
     
+    register_gpcieuni_proc(tmp_slot_num, dev_name, m_pcieuni_dev_p, pcieuni_cdev_p);
+
     pcieuni_cdev_p->pcieuniModuleNum ++;
     return 0;
 }
