@@ -7,24 +7,18 @@ all:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) modules
 
 install: all
+	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) modules_install
+	test -d /usr/local/include/gpcieuni || mkdir -p /usr/local/include/gpcieuni
+	cp -f $(PWD)/pcieuni_io.h /usr/local/include/gpcieuni/pcieuni_io.h
+	cp -f $(PWD)/pcieuni_ufn.h /usr/local/include/gpcieuni/pcieuni_ufn.h
+	cp -f $(PWD)/pcieuni_buffer.h /usr/local/include/gpcieuni/pcieuni_buffer.h
 	test -d /lib/modules/$(KVERSION)/gpcieuni || sudo mkdir -p /lib/modules/$(KVERSION)/gpcieuni
-	sudo cp -f $(PWD)/Module.symvers /lib/modules/$(KVERSION)/gpcieuni/Gpcieuni.symvers
-	cp -f $(PWD)/Module.symvers $(PWD)/Gpcieuni.symvers
-	test -d /usr/local/include/gpcieuni || sudo mkdir -p /usr/local/include/gpcieuni
-	sudo cp -f $(PWD)/pcieuni_io.h /usr/local/include/gpcieuni/pcieuni_io.h
-	sudo cp -f $(PWD)/pcieuni_ufn.h /usr/local/include/gpcieuni/pcieuni_ufn.h
-	sudo cp -f $(PWD)/pcieuni_buffer.h /usr/local/include/gpcieuni/pcieuni_buffer.h
+	cp -f $(PWD)/Module.symvers /lib/modules/$(KVERSION)/gpcieuni
+	depmod
 
 debug:
-	KCPPFLAGS="-DPCIEUNI_DEBUG" make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) modules
-	test -d /lib/modules/$(KVERSION)/gpcieuni || sudo mkdir -p /lib/modules/$(KVERSION)/gpcieuni
-	sudo cp -f $(PWD)/Module.symvers /lib/modules/$(KVERSION)/gpcieuni/Gpcieuni.symvers
-	cp -f $(PWD)/Module.symvers $(PWD)/Gpcieuni.symvers
-	test -d /usr/local/include/gpcieuni || sudo mkdir -p /usr/local/include/gpcieuni
-	sudo cp -f $(PWD)/pcieuni_io.h /usr/local/include/gpcieuni/pcieuni_io.h
-	sudo cp -f $(PWD)/pcieuni_ufn.h /usr/local/include/gpcieuni/pcieuni_ufn.h
-	sudo cp -f $(PWD)/pcieuni_buffer.h /usr/local/include/gpcieuni/pcieuni_buffer.h
+	KCPPFLAGS="-DPCIEUNI_DEBUG" make all
 
 clean:
 	test ! -d /lib/modules/$(KVERSION) || make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean
-	rm -rf Gpcieuni.symvers
+
