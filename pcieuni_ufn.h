@@ -210,23 +210,27 @@ struct pcieuni_cdev {
 };
 typedef struct pcieuni_cdev pcieuni_cdev;
 
-int        pcieuni_open_exp( struct inode *, struct file * );
-int        pcieuni_release_exp(struct inode *, struct file *);
-ssize_t  pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
-ssize_t  pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
-long     pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
-int        pcieuni_set_drvdata(pcieuni_dev *, void *);
-void*    pcieuni_get_drvdata(pcieuni_dev *);
-int        pcieuni_get_brdnum(struct pci_dev *);
-pcieuni_dev*   pcieuni_get_pciedata(struct pci_dev *);
-void*    pcieuni_get_baddress(int, pcieuni_dev *);
+int     pcieuni_init_module_exp(pcieuni_cdev **, struct file_operations *, char *);
+void    pcieuni_cleanup_module_exp(pcieuni_cdev  **);
 
-int       pcieuni_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pcieuni_cdev *, char *, int * );
-int       pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev *, char *, int *);
+int     pcieuni_open_exp( struct inode *, struct file * );
+int     pcieuni_release_exp(struct inode *, struct file *);
+ssize_t pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
+ssize_t pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
+long    pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
 
-int       pcieuni_get_prjinfo(pcieuni_dev *);
-int       pcieuni_fill_prj_info(pcieuni_dev *, void *);
-int       pcieuni_get_brdinfo(pcieuni_dev *);
+int     pcieuni_set_drvdata(pcieuni_dev *, void *);
+void*   pcieuni_get_drvdata(pcieuni_dev *);
+int     pcieuni_get_brdnum(struct pci_dev *);
+pcieuni_dev* pcieuni_get_pciedata(struct pci_dev *);
+void*   pcieuni_get_baddress(int, pcieuni_dev *);
+
+int     pcieuni_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pcieuni_cdev *, char *, int * );
+int     pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev *, char *, int *);
+
+int     pcieuni_get_prjinfo(pcieuni_dev *);
+int     pcieuni_fill_prj_info(pcieuni_dev *, void *);
+int     pcieuni_get_brdinfo(pcieuni_dev *);
 
 int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
