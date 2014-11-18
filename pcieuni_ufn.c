@@ -1,5 +1,3 @@
-
-
 #include <linux/module.h>
 #include <linux/fs.h>	
 #include <linux/sched.h>
@@ -15,20 +13,175 @@
 #include <asm/types.h>
 */
 
-
 #include "pcieuni_ufn.h"
+
+int pcieuni_init_module_exp(pcieuni_cdev **pcieuni_cdev_pp, struct file_operations *pcieuni_fops, char *dev_name) {
+    int         i = 0;
+    int         k = 0;
+    int         result = 0;
+    int         devno = 0;
+    dev_t       devt = 0;
+    char        **endptr = 0;
+    pcieuni_cdev *pcieuni_cdev_p;
+
+    printk(KERN_ALERT "############GPCIEUNI_INIT MODULE  NAME %s\n", dev_name);
+
+    pcieuni_cdev_p = kzalloc(sizeof(pcieuni_cdev), GFP_KERNEL);
+    if (!pcieuni_cdev_p) {
+        printk(KERN_ALERT "GPCIEUNI_INIT CREATE CDEV STRUCT NO MEM\n");
+        return -ENOMEM;
+    }
+
+    *pcieuni_cdev_pp = pcieuni_cdev_p;
+    pcieuni_cdev_p->PCIEUNI_MAJOR       = 47;
+    pcieuni_cdev_p->PCIEUNI_MINOR       = 0;
+    pcieuni_cdev_p->pcieuniModuleNum    = 0;
+    pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ = 1;
+    pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN = 1;
+    pcieuni_cdev_p->GPCIEUNI_VER_MAJ    = 1;
+    pcieuni_cdev_p->GPCIEUNI_VER_MIN    = 1;
+
+    result = alloc_chrdev_region(&devt, pcieuni_cdev_p->PCIEUNI_MINOR,
+            (PCIEUNI_NR_DEVS + 1), dev_name);
+    pcieuni_cdev_p->PCIEUNI_MAJOR = MAJOR(devt);
+
+    /* Populate sysfs entries */
+    pcieuni_cdev_p->pcieuni_class = class_create(pcieuni_fops->owner, dev_name);
+
+    /*Get module driver version information*/
+    pcieuni_cdev_p->GPCIEUNI_VER_MAJ = simple_strtol(THIS_MODULE->version,
+            endptr, 10);
+    pcieuni_cdev_p->GPCIEUNI_VER_MIN = simple_strtol(THIS_MODULE->version + 2,
+            endptr, 10);
+
+    printk(KERN_ALERT "&&&&&GPCIEUNI_INIT CALLED; GPCIEUNI MODULE VERSION %i.%i\n",
+           pcieuni_cdev_p->GPCIEUNI_VER_MAJ, pcieuni_cdev_p->GPCIEUNI_VER_MIN);
+
+    pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ = simple_strtol(
+            pcieuni_fops->owner->version, endptr, 10);
+    pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN = simple_strtol(
+            pcieuni_fops->owner->version + 2, endptr, 10);
+
+    printk(KERN_ALERT "&&&&&GPCIEUNI_INIT CALLED; THIS MODULE VERSION %i.%i\n",
+            pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ,
+            pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN);
+
+    for (i = 0; i <= PCIEUNI_NR_DEVS; i++) {
+        pcieuni_cdev_p->pcieuni_dev_m[i] = kzalloc(sizeof(pcieuni_dev), GFP_KERNEL);
+        if (!pcieuni_cdev_p->pcieuni_dev_m[i]) {
+            printk(KERN_ALERT "AFTER_INIT CREATE DEV STRUCT NO MEM\n");
+
+            for (k = 0; k < i; k++) {
+                if (pcieuni_cdev_p->pcieuni_dev_m[k]) {
+                    kfree(pcieuni_cdev_p->pcieuni_dev_m[k]);
+                }
+            }
+
+            if (pcieuni_cdev_p) {
+                kfree(pcieuni_cdev_p);
+            }
+
+            return -ENOMEM;
+        }
+
+        pcieuni_cdev_p->pcieuni_dev_m[i]->parent_dev = pcieuni_cdev_p;
+        devno = MKDEV(pcieuni_cdev_p->PCIEUNI_MAJOR, pcieuni_cdev_p->PCIEUNI_MINOR + i);
+
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_num = devno;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_minor = (pcieuni_cdev_p->PCIEUNI_MINOR + i);
+
+        cdev_init(&(pcieuni_cdev_p->pcieuni_dev_m[i]->cdev), pcieuni_fops);
+        pcieuni_cdev_p->pcieuni_dev_m[i]->cdev.owner = THIS_MODULE;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->cdev.ops = pcieuni_fops;
+
+        /* The device is now live and the device file should be available */
+        result = cdev_add(&(pcieuni_cdev_p->pcieuni_dev_m[i]->cdev), devno, 1);
+        if (result) {
+            printk(KERN_NOTICE "Error %d adding devno%d num%d\n", result, devno, i);
+            return 1;
+        }
+
+        INIT_LIST_HEAD(&(pcieuni_cdev_p->pcieuni_dev_m[i]->prj_info_list.prj_list));
+        INIT_LIST_HEAD(&(pcieuni_cdev_p->pcieuni_dev_m[i]->dev_file_list.node_file_list));
+        mutex_init(&(pcieuni_cdev_p->pcieuni_dev_m[i]->dev_mut));
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_sts = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_file_ref = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->irq_mode = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->msi = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_dma_64mask = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->pcieuni_all_mems = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->brd_num = i;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->binded = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->dev_file_list.file_cnt = 0;
+        pcieuni_cdev_p->pcieuni_dev_m[i]->null_dev = 0;
+
+        if (i == PCIEUNI_NR_DEVS) {
+            pcieuni_cdev_p->pcieuni_dev_m[i]->binded = 1;
+            pcieuni_cdev_p->pcieuni_dev_m[i]->null_dev = 1;
+        }
+    }
+
+    return result; /* succeed */
+}
+EXPORT_SYMBOL(pcieuni_init_module_exp);
+
+void pcieuni_cleanup_module_exp(pcieuni_cdev  **pcieuni_cdev_p)
+{
+    int                     k = 0;
+    dev_t                 devno ;
+    pcieuni_cdev     *pcieuni_cdev_m = *pcieuni_cdev_p;
+
+    printk(KERN_ALERT "GPCIEUNI_CLEANUP_MODULE CALLED\n");
+
+    devno = MKDEV(pcieuni_cdev_m->PCIEUNI_MAJOR, pcieuni_cdev_m->PCIEUNI_MINOR);
+    unregister_chrdev_region(devno, (PCIEUNI_NR_DEVS + 1));
+    class_destroy(pcieuni_cdev_m->pcieuni_class);
+    for(k = 0; k <= PCIEUNI_NR_DEVS; k++){
+                if(pcieuni_cdev_m->pcieuni_dev_m[k]){
+                    kfree(pcieuni_cdev_m->pcieuni_dev_m[k]);
+                    pcieuni_cdev_m->pcieuni_dev_m[k] = 0;
+                }
+            }
+    kfree(*pcieuni_cdev_p);
+    pcieuni_cdev_m  = 0;
+    *pcieuni_cdev_p = 0;
+}
+EXPORT_SYMBOL(pcieuni_cleanup_module_exp);
 
 
 int    pcieuni_open_exp( struct inode *inode, struct file *filp )
 {
-    int    minor;
-    struct pcieuni_dev *dev;
-    
+    int minor;
+    pcieuni_dev *dev;
+    pcieuni_file_list *tmp_file_list;
+    pcieuni_file_list *tmp;
+
     minor = iminor(inode);
     dev = container_of(inode->i_cdev, struct pcieuni_dev, cdev);
-    dev->dev_minor     = minor;
-    filp->private_data  = dev; 
-    
+    dev->dev_minor = minor;
+
+    if (mutex_lock_interruptible(&dev->dev_mut)) {
+        return -ERESTARTSYS;
+    }
+    dev->dev_file_ref++;
+    filp->private_data = dev;
+
+    tmp_file_list = kzalloc(sizeof(pcieuni_file_list), GFP_KERNEL);
+    INIT_LIST_HEAD(&tmp_file_list->node_file_list);
+    tmp_file_list->file_cnt = dev->dev_file_ref;
+    tmp_file_list->filp = filp;
+    list_add(&(tmp_file_list->node_file_list),
+            &(dev->dev_file_list.node_file_list));
+
+    printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d FILE_REF %i fops open (filp %p)\n",
+            current->comm, current->pid, minor, dev->dev_file_ref, filp);
+
+    list_for_each_entry(tmp, &(dev->dev_file_list.node_file_list), node_file_list)
+        printk(KERN_ALERT "FILE_REF %i fops open (filp %p)\n",
+                tmp->file_cnt, tmp->filp);
+
+    mutex_unlock(&dev->dev_mut);
+
     //printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d \n", current->comm, current->pid, minor);
     return 0;
 }
@@ -36,13 +189,37 @@ EXPORT_SYMBOL(pcieuni_open_exp);
 
 int    pcieuni_release_exp(struct inode *inode, struct file *filp)
 {
+    struct pcieuni_dev *dev   = filp->private_data;
     u16 cur_proc     = 0;
-    //struct pcieuni_dev *dev   = filp->private_data;
-    //minor     = dev->dev_minor;
-    //d_num   = dev->dev_num;
+    pcieuni_file_list *tmp_file_list;
+    pcieuni_file_list *tmp;
+    struct list_head *pos, *q;
+
+    if (mutex_lock_interruptible(&dev->dev_mut)) {
+        return -ERESTARTSYS;
+    }
+    dev->dev_file_ref--;
     cur_proc = current->group_leader->pid;
-    //printk(KERN_ALERT "Close Procces is \"%s\" (pid %i)\n", current->comm, current->pid);
-    //printk(KERN_ALERT "Close INODE %d FILE %d \n", inode, filp);
+
+    list_for_each_safe(pos, q, &(dev->dev_file_list.node_file_list))
+    {
+        tmp_file_list = list_entry(pos, pcieuni_file_list, node_file_list);
+        printk(KERN_ALERT "FILE_REF %i, fops open (filp %p)\n",
+                tmp_file_list->file_cnt, filp);
+        if (tmp_file_list->filp == filp) {
+            printk(KERN_ALERT "FREE FILE LIST ENTRY\n");
+            list_del(pos);
+            kfree(tmp_file_list);
+        }
+    }
+
+    printk(KERN_ALERT "Close Procces is \"%s\" (pid %i) FILE_REF %i, fops open (filp %p)\n",
+            current->comm, current->pid, dev->dev_file_ref, filp);
+    list_for_each_entry(tmp, &(dev->dev_file_list.node_file_list), node_file_list)
+        printk(KERN_ALERT "FILE_REF %i, fops open (filp %p)\n",
+                tmp->file_cnt, tmp->filp);
+
+    mutex_unlock(&dev->dev_mut);
     return 0;
 }
 EXPORT_SYMBOL(pcieuni_release_exp);
@@ -372,27 +549,40 @@ EXPORT_SYMBOL(pcieuni_get_prjinfo);
     printk(KERN_INFO "PCIEUNI_PROC_INFO CALLEDi\n");
 
     p = buf;
-    p += sprintf(p,"GPCIEUNI Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ, 
-                                                                               pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);
-    p += sprintf(p,"Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MAJ, 
-                                                                               pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MIN);
+    p += sprintf(p, "GPCIEUNI Driver Version:\t%i.%i\n",
+            pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ,
+            pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);
+    p += sprintf(p, "Driver Version:\t%i.%i\n",
+            pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MAJ,
+            pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MIN);
     p += sprintf(p,"Board NUM:\t%i\n", pcieuni_dev_m->brd_num);
     p += sprintf(p,"Slot    NUM:\t%i\n", pcieuni_dev_m->slot_num);
-    p += sprintf(p,"Board ID:\t%X\n", pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_ID);
-    p += sprintf(p,"Board Version;\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_VERSION);
-    p += sprintf(p,"Board Date:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_DATE);
-    p += sprintf(p,"Board HW Ver:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_HW_VERSION);
-    p += sprintf(p,"Board Next Prj:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_PROJ_NEXT);
-    p += sprintf(p,"Board Reserved:\t%X\n",pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_RESERVED);
+    p += sprintf(p, "Board ID:\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_ID);
+    p += sprintf(p, "Board Version;\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_VERSION);
+    p += sprintf(p, "Board Date:\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_DATE);
+    p += sprintf(p, "Board HW Ver:\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_HW_VERSION);
+    p += sprintf(p, "Board Next Prj:\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_PROJ_NEXT);
+    p += sprintf(p, "Board Reserved:\t%X\n",
+            pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_RESERVED);
     p += sprintf(p,"Number of Proj:\t%i\n", pcieuni_dev_m->startup_prj_num);
     
     list_for_each(pos,  &pcieuni_dev_m->prj_info_list.prj_list ){
         tmp_prj_info_list = list_entry(pos, struct pcieuni_prj_info, prj_list);
-        p += sprintf(p,"Project ID:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_ID);
-        p += sprintf(p,"Project Version:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_VERSION);
-        p += sprintf(p,"Project Date:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_DATE);
-        p += sprintf(p,"Project Reserver:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_RESERVED);
-        p += sprintf(p,"Project Next:\t%X\n", tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
+        p += sprintf(p, "Project ID:\t%X\n",
+                tmp_prj_info_list->PCIEUNI_PROJ_ID);
+        p += sprintf(p, "Project Version:\t%X\n",
+                tmp_prj_info_list->PCIEUNI_PROJ_VERSION);
+        p += sprintf(p, "Project Date:\t%X\n",
+                tmp_prj_info_list->PCIEUNI_PROJ_DATE);
+        p += sprintf(p, "Project Reserver:\t%X\n",
+                tmp_prj_info_list->PCIEUNI_PROJ_RESERVED);
+        p += sprintf(p, "Project Next:\t%X\n",
+                tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
     }
 
     p += sprintf(p,"\0");

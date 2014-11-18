@@ -86,6 +86,13 @@
 #define WORD_PROJ_IRQ_FLAGS            0x08
 #define WORD_PROJ_IRQ_CLR_FLAGSE  0x0C
 
+struct pcieuni_file_list {
+    struct list_head node_file_list;
+    struct file *filp;
+    int      file_cnt;
+};
+typedef struct pcieuni_file_list pcieuni_file_list;
+
 struct pcieuni_brd_info {
     u32 PCIEUNI_BOARD_ID;
     u32 PCIEUNI_BOARD_VERSION;
@@ -111,12 +118,18 @@ struct pcieuni_dev {
     char                name[64];       /**< Card name. */
     struct cdev         cdev;	  /* Char device structure      */
     struct mutex      dev_mut;            /* mutual exclusion semaphore */
+    int                 binded;         /* is binded to device*/
     
     struct pci_dev    *pcieuni_pci_dev;
     int                        dev_num;
     int                        brd_num;
     int                        dev_minor;
     int                        dev_sts;
+    int                 dev_file_ref;
+    int                 null_dev;
+
+    pcieuni_file_list dev_file_list;
+
     int                        slot_num;
     u16                      vendor_id;
     u16                      device_id;
@@ -190,30 +203,34 @@ struct pcieuni_cdev {
     int   PCIEUNI_MAJOR ;     /* major by default */
     int   PCIEUNI_MINOR  ;    /* minor by default */
 
-    pcieuni_dev                   *pcieuni_dev_m[PCIEUNI_NR_DEVS];
+    pcieuni_dev                   *pcieuni_dev_m[PCIEUNI_NR_DEVS + 1];
     struct class                    *pcieuni_class;
     struct proc_dir_entry     *pcieuni_procdir;
     int                                   pcieuniModuleNum;
 };
 typedef struct pcieuni_cdev pcieuni_cdev;
 
-int        pcieuni_open_exp( struct inode *, struct file * );
-int        pcieuni_release_exp(struct inode *, struct file *);
-ssize_t  pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
-ssize_t  pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
-long     pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
-int        pcieuni_set_drvdata(struct pcieuni_dev *, void *);
-void*    pcieuni_get_drvdata(struct pcieuni_dev *);
-int        pcieuni_get_brdnum(struct pci_dev *);
-pcieuni_dev*   pcieuni_get_pciedata(struct pci_dev *);
-void*    pcieuni_get_baddress(int, struct pcieuni_dev *);
+int     pcieuni_init_module_exp(pcieuni_cdev **, struct file_operations *, char *);
+void    pcieuni_cleanup_module_exp(pcieuni_cdev  **);
 
-int       pcieuni_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pcieuni_cdev **, char *, int * );
-int       pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev **, char *, int *);
+int     pcieuni_open_exp( struct inode *, struct file * );
+int     pcieuni_release_exp(struct inode *, struct file *);
+ssize_t pcieuni_read_exp(struct file *, char __user *, size_t , loff_t *);
+ssize_t pcieuni_write_exp(struct file *, const char __user *, size_t , loff_t *);
+long    pcieuni_ioctl_exp(struct file *, unsigned int* , unsigned long* , pcieuni_cdev *);
 
-int       pcieuni_get_prjinfo(struct pcieuni_dev *);
-int       pcieuni_fill_prj_info(struct pcieuni_dev *, void *);
-int       pcieuni_get_brdinfo(struct pcieuni_dev *);
+int     pcieuni_set_drvdata(pcieuni_dev *, void *);
+void*   pcieuni_get_drvdata(pcieuni_dev *);
+int     pcieuni_get_brdnum(struct pci_dev *);
+pcieuni_dev* pcieuni_get_pciedata(struct pci_dev *);
+void*   pcieuni_get_baddress(int, pcieuni_dev *);
+
+int     pcieuni_probe_exp(struct pci_dev *, const struct pci_device_id *,  struct file_operations *, pcieuni_cdev *, char *, int * );
+int     pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev *, char *, int *);
+
+int     pcieuni_get_prjinfo(pcieuni_dev *);
+int     pcieuni_fill_prj_info(pcieuni_dev *, void *);
+int     pcieuni_get_brdinfo(pcieuni_dev *);
 
 int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
@@ -223,12 +240,12 @@ ssize_t  pcieuni_read_no_struct_exp(struct file *, char __user *, size_t , loff_
 ssize_t  pcieuni_write_no_struct_exp(struct file *, const char __user *, size_t , loff_t *);
 
 #if LINUX_VERSION_CODE < 0x20613 /* irq_handler_t has changed in 2.6.19 */
-int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), struct pcieuni_dev *, char *);
+int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), pcieuni_dev *, char *);
 #else
-int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), struct pcieuni_dev *, char *);
+int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), pcieuni_dev *, char *);
 #endif
 
-void register_gpcieuni_proc(int num, char * dfn, struct pcieuni_dev     *p_upcie_dev, struct pcieuni_cdev     *p_upcie_cdev);
+void register_gpcieuni_proc(int num, char * dfn, pcieuni_dev *p_upcie_dev, pcieuni_cdev *p_upcie_cdev);
 void unregister_gpcieuni_proc(int num, char *dfn);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
     int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);

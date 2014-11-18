@@ -1,38 +1,33 @@
 #include <linux/module.h>
-#include <linux/fs.h>	
+#include <linux/fs.h>
 #include <linux/proc_fs.h>
 
 #include "pcieuni_ufn.h"
 
-int pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev  **pcieuni_cdev_p, char *dev_name, int * brd_num)
+int pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev  *pcieuni_cdev_p, char *dev_name, int * brd_num)
 {
-     pcieuni_dev                *pcieunidev;
-     pcieuni_cdev              *pcieuni_cdev_m;
+     pcieuni_dev            *pcieunidev;
      int                    tmp_dev_num  = 0;
      int                    tmp_slot_num  = 0;
-     int                    brdNum            = 0;
-     int                    brdCnt              = 0;
      int                    m_brdNum      = 0;
-     char                prc_entr[64];
-     dev_t              devno ;
      
      struct list_head *pos;
      struct list_head *npos;
      struct pcieuni_prj_info  *tmp_prj_info_list;
      
+     pcieuni_file_list *tmp_file_list;
+     struct list_head *fpos, *q;
+
      printk(KERN_ALERT "PCIEUNI_REMOVE_EXP CALLED\n");
     
-    pcieuni_cdev_m = *pcieuni_cdev_p;
-    devno = MKDEV(pcieuni_cdev_m->PCIEUNI_MAJOR, pcieuni_cdev_m->PCIEUNI_MINOR);
     pcieunidev = dev_get_drvdata(&(dev->dev));
     tmp_dev_num  = pcieunidev->dev_num;
     tmp_slot_num  = pcieunidev->slot_num;
     m_brdNum       = pcieunidev->brd_num;
     * brd_num        = tmp_slot_num;
-    sprintf(prc_entr, "%ss%d", dev_name, tmp_slot_num);
+
     printk(KERN_ALERT "PCIEUNI_REMOVE: SLOT %d DEV %d BOARD %i\n", tmp_slot_num, tmp_dev_num, m_brdNum);
-    
-    
+
     /* now let's be good and free the proj_info_list items. since we will be removing items
      * off the list using list_del() we need to use a safer version of the list_for_each() 
      * macro aptly named list_for_each_safe(). Note that you MUST use this macro if the loop 
@@ -111,44 +106,34 @@ int pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev  **pcieuni_cdev_p, char
        pcieunidev->mem_base5_flag = 0;
        pcieunidev->rw_off5        = 0;
     }
+
     pci_release_regions((pcieunidev->pcieuni_pci_dev));
-    mutex_unlock(&pcieunidev->dev_mut);
+
     printk(KERN_INFO "PCIEUNI_REMOVE:  DESTROY DEVICE MAJOR %i MINOR %i\n",
-               pcieuni_cdev_m->PCIEUNI_MAJOR, (pcieuni_cdev_m->PCIEUNI_MINOR + pcieunidev->brd_num));
-    device_destroy(pcieuni_cdev_m->pcieuni_class,  MKDEV(pcieuni_cdev_m->PCIEUNI_MAJOR, 
-                                                  pcieuni_cdev_m->PCIEUNI_MINOR + pcieunidev->brd_num));
+            pcieuni_cdev_p->PCIEUNI_MAJOR, (pcieuni_cdev_p->PCIEUNI_MINOR + pcieunidev->brd_num));
+
+    device_destroy(pcieuni_cdev_p->pcieuni_class,  MKDEV(pcieuni_cdev_p->PCIEUNI_MAJOR,
+            pcieuni_cdev_p->PCIEUNI_MINOR + pcieunidev->brd_num));
     
     unregister_gpcieuni_proc(tmp_slot_num, dev_name);
-   // remove_proc_entry(prc_entr,0);
-    
+
     pcieunidev->dev_sts   = 0;
-    pcieuni_cdev_m->pcieuniModuleNum --;
+    pcieunidev->binded    = 0;
+    pcieuni_cdev_p->pcieuniModuleNum --;
     pci_disable_device(dev);
-    mutex_destroy(&pcieunidev->dev_mut);
-    cdev_del(&pcieunidev->cdev);
-    brdNum = pcieunidev->brd_num;
-    kfree(pcieuni_cdev_m->pcieuni_dev_m[brdNum]);
-    pcieuni_cdev_m->pcieuni_dev_m[brdNum] = 0;
-    
-    /*Check if no more modules free main chrdev structure */
-    brdCnt             = 0;
-    if(pcieuni_cdev_m){
-        for(brdNum = 0;brdNum < PCIEUNI_NR_DEVS;brdNum++){
-            if(pcieuni_cdev_m->pcieuni_dev_m[brdNum]){
-                printk(KERN_INFO "PCIEUNI_REMOVE:  EXIST BOARD %i\n", brdNum);
-                brdCnt++;
-            }
-        }
-        if(!brdCnt){
-            printk(KERN_INFO "PCIEUNI_REMOVE:  NO MORE BOARDS\n");
-            unregister_chrdev_region(devno, PCIEUNI_NR_DEVS);
-            class_destroy(pcieuni_cdev_m->pcieuni_class);
-            //kfree(pcieuni_cdev_m);
-            kfree(*pcieuni_cdev_p);
-            pcieuni_cdev_m  = 0;
-            *pcieuni_cdev_p = 0;
-        }
+
+    printk(KERN_ALERT "LIST FOR EACH ENTRY START\n");
+    list_for_each_safe(fpos, q, &(pcieunidev->dev_file_list.node_file_list)){
+             tmp_file_list = list_entry(fpos, pcieuni_file_list, node_file_list);
+             printk(KERN_ALERT "FILE_REF %i FILE_P %p\n", tmp_file_list->file_cnt, tmp_file_list->filp);
+             tmp_file_list->filp->private_data  = pcieuni_cdev_p->pcieuni_dev_m[PCIEUNI_NR_DEVS];
+             printk(KERN_ALERT "DELETING FILE_LIST FILE_REF %i FILE_P %p\n", tmp_file_list->file_cnt, tmp_file_list->filp);
+             list_del(fpos);
+             kfree (tmp_file_list);
     }
+    printk(KERN_ALERT "LIST FOR EACH ENTRY END\n");
+    
+    mutex_unlock(&pcieunidev->dev_mut);
     return 0;
 }
 EXPORT_SYMBOL(pcieuni_remove_exp);
