@@ -1,7 +1,0 @@
-PACKAGE_NAME="gpcieuni"
-PACKAGE_VERSION="1"
-BUILT_MODULE_NAME[0]="gpcieuni"
-AUTOINSTALL="yes"
-MAKE[0]="make KVERSION=$kernelver"
-CLEAN="make clean"
-DEST_MODULE_LOCATION[0]="/extra"

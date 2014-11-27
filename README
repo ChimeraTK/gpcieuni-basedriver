@@ -1,0 +1,20 @@
+The driver uses a build system which automatically replaces the version number
+in the module source code, the dkms config files and the debian packaging
+files with the version number specified in the Makefile. This is the only
+place where the version is stored, which makes maintenance easier.
+
+To replace the version number, some files are created during the build process
+from a version which has an additional .in extentension (gpcieuni_drv.c.in or
+dkms.conf.in for instance). This is the file which is in version
+control. Whenever you exit such a file, always edit the .in because the other
+file will be replaced in the build process.
+
+When building debian packages this is always done from the tagged version in
+the subversion repository for the version number in the Makefile.
+If you have not tagged the version, you cannot build a debian package. If you
+have not increased the version number yet, but the trunk or the local copy
+contains modifications with respect to the tag, the debian package will be
+made from the tagged version in subversion and not contain these changes
+(because they do not belong to this tag). This procedure is introduced to
+prevent accidental creation of untagged versions.
+

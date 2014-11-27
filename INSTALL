@@ -1,0 +1,30 @@
+Main build targets:
+
+$make (without arguments)
+Compiles the kernel modules, but does not install it, nor does it install the
+header files or the .symvers file. If you want to build dependent modules, you
+either have to link or copy those manually (not recommended!!!) or install
+this module. 
+
+$make clean
+Removes the files which have been created by make, except for
+gpcieuni.symvers. This is a hack to enable dkms installation.
+
+$make install
+Installs the driver using the dkms mechanism. In addition the headers are
+installed to
+
+/usr/local/include/gpcieuni
+
+and the symvers file is installed to 
+
+/lib/modules/${kernelversion}/gpcieuni/Module.symvers
+
+$make uninstall
+Calls dkms remove and uninstalls the module, the headers and the symvers file.
+
+$make debian_package
+Creates a debian package from the corresponding tagged version in the
+subversion repositoy. You need a working internet connection and a subversion
+client for this (plus the debian tools to create packages). Only tested on
+Ubuntu.

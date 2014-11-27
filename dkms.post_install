@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#This script requires 4 parameters in the correct order
+#arg 1 = MODULE (name of the module)
+#arg 2 = MODULE_VERSION
+#arg 3 = KERNEL_VERSION
+#arg 4 = DKMS_TREE
+
+#at least check the number of parameters
+if [ $# -ne 4 ] ; then
+    echo Wrong number of parameters. This script is to be run by dkms, don\'t run it manually.
+    exit -1
+fi
+
+MODULE=$1
+MODULE_VERSION=$2
+KERNEL_VERSION=$3
+DKMS_TREE=$4
+
+HEADER_DIR=/usr/local/include/$MODULE
+SYMVERS_DIR=/lib/modules/$KERNEL_VERSION/$MODULE
+BUILD_DIR=$DKMS_TREE/$MODULE/$MODULE_VERSION/build
+
+#install the headers
+test -d $HEADER_DIR || mkdir -p $HEADER_DIR
+cp *.h $HEADER_DIR
+
+#install the symvers file
+test -d $SYMVERS_DIR || mkdir -p $SYMVERS_DIR
+cp $BUILD_DIR/${MODULE}.symvers $SYMVERS_DIR/Module.symvers
