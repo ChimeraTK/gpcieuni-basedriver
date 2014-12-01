@@ -5,7 +5,7 @@ obj-m := gpcieuni.o
 #build for the running kernel
 KVERSION = $(shell uname -r)
 
-#extract the 
+#define the package/module version (the same for this driver)
 GPCIEUNI_PACKAGE_VERSION=0.1.0
 
 #The normal compile step for development
@@ -28,6 +28,7 @@ debug:
 
 clean:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean
+	rm -f gpcieuni_drv.c
 #do not clean up the gpcieuni.symvers
 
 #This target will only succeed on debian machines with the debian packaging tools installed

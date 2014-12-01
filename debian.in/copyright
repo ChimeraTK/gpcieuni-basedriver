@@ -1,17 +1,18 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: https://svnsrv.desy.de/desy/mtca4u/drivers/gpcieuni
 
-This is Debian/GNU Linux's version of the DOOCS PCIExpress Device Driver for uTCA
-
-
-Copyright (C) 1994-2011  Ludwig Petrosyan <ludwig.petrosyan@desy.de>
-
-   This program is free software; you can redistribute it
-   and/or  modify it under  the terms of  the GNU General
-   Public  License as  published  by  the  Free  Software
-   Foundation;  either  version 2 of the License, or  (at
-   your option) any later version.
-
-   You should have received a copy of the GNU General Public
-   License.  If not, write to the Free Software Foundation, 
-   Inc., 59 Temple Place - Suite 330,
-   Boston, MA 02111-1307, USA.
-	    
+Files: *
+Copyright: 2013 Ludwig Petrosyan <ludwig.petrosyan@desy.de>
+           2014 Martin Killenberg <martin.killenberg@desy.de>
+License: GPL-2+
+ This program is free software; you can redistribute it
+ and/or  modify it under  the terms of  the GNU General
+ Public  License as  published  by  the  Free  Software
+ Foundation;  either  version 2 of the License, or  (at
+ your option) any later version.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License can be found in "/usr/share/common-licenses/GPL-2".
