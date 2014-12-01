@@ -28,7 +28,11 @@ debug:
 
 clean:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean
-	#do not clean up the gpcieuni.symvers
+#do not clean up the gpcieuni.symvers
+
+#This target will only succeed on debian machines with the debian packaging tools installed
+debian_package: configure-package-files
+	./make_debian_package.sh ${GPCIEUNI_PACKAGE_VERSION}
 
 ##### Internal targets usually not called by the user: #####
 

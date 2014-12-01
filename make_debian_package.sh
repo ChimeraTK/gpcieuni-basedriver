@@ -31,7 +31,7 @@ mkdir debian_package
 svn co https://svnsrv.desy.de/public/mtca4u/drivers/gpcieuni/tags/${GPCIEUNI_PACKAGE_VERSION} ${CHECKOUT_DIRECTORY}
 echo checked out to  ${CHECKOUT_DIRECTORY}
 
-cp debian_from_template ${CHECKOUT_DIRECTORY}
+cp -r debian_from_template ${CHECKOUT_DIRECTORY}/debian
 
 cd ${CHECKOUT_DIRECTORY}
 
