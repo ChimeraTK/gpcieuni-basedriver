@@ -1,6 +1,7 @@
 gpcieuni-objs := gpcieuni_drv.o pcieuni_ufn.o pcieuni_probe_exp.o \
 	pcieuni_remove_exp.o pcieuni_rw_no_struct_exp.o pcieuni_ioctl_exp.o pcieuni_buffer.o
-obj-m := gpcieuni.o 
+obj-m := gpcieuni.o
+ccflags-y += -fprofile-arcs -ftest-coverage 
 
 #build for the running kernel
 KVERSION = $(shell uname -r)

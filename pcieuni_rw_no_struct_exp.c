@@ -70,13 +70,16 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
   switch (transferInformation->bar){
     DEFINE_BAR_START_AND_SIZE( 0 );
     DEFINE_BAR_START_AND_SIZE( 1 );
-    DEFINE_BAR_START_AND_SIZE( 2 );
+    case 2:
+      printk("PCIEUNI_TRANSFER_INFO_CHECK: Bar 2 reserved for DMA. No direct access allowed.\n");
+      return -EFAULT;
+      break;
     DEFINE_BAR_START_AND_SIZE( 3 );
     DEFINE_BAR_START_AND_SIZE( 4 );
     DEFINE_BAR_START_AND_SIZE( 5 );
 
   default:
-    printk("PCIEUNI_WRITE_NO_STRUCT_EXP: Invalid bar number %d\n", transferInformation->bar);
+    printk("PCIEUNI_TRANSFER_INFO_CHECK: Invalid bar number %d\n", transferInformation->bar);
     return -EFAULT;
   }
   

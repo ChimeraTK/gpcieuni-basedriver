@@ -585,7 +585,6 @@ EXPORT_SYMBOL(pcieuni_get_prjinfo);
                 tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
     }
 
-    p += sprintf(p,"\0");
     cnt = strlen(p);
     printk(KERN_INFO "PCIEUNI_PROC_INFO: PROC LEN%i\n", cnt);
     copy_to_user(buf,p, (size_t)cnt);
