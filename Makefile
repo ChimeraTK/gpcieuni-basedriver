@@ -1,13 +1,12 @@
 gpcieuni-objs := gpcieuni_drv.o pcieuni_ufn.o pcieuni_probe_exp.o \
 	pcieuni_remove_exp.o pcieuni_rw_no_struct_exp.o pcieuni_ioctl_exp.o pcieuni_buffer.o
 obj-m := gpcieuni.o
-ccflags-y += -fprofile-arcs -ftest-coverage 
 
 #build for the running kernel
 KVERSION = $(shell uname -r)
 
 #define the package/module version (the same for this driver)
-GPCIEUNI_PACKAGE_VERSION=0.1.0
+GPCIEUNI_PACKAGE_VERSION=0.1.1
 
 #The normal compile step for development
 all: configure-source-files
@@ -23,9 +22,13 @@ install: dkms-prepare
 uninstall:
 	dkms remove -m gpcieuni -v ${GPCIEUNI_PACKAGE_VERSION} -k $(KVERSION)
 
-#compile with debug flag, causes lots of kernel output
+#Compile with debug flag, causes lots of kernel output.
+#In addition the driver is compiled with code coverage. It only loads on
+#on a kernel with code coverage enabled.
+#FIXME: Should both options be separate, so you can get debug messages on a 
+#standard kernel?
 debug:
-	KCPPFLAGS="-DPCIEUNI_DEBUG" make all
+	KCPPFLAGS="-DPCIEUNI_DEBUG -fprofile-arcs -ftest-coverage" make all
 
 clean:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean

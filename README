@@ -18,3 +18,12 @@ made from the tagged version in subversion and not contain these changes
 (because they do not belong to this tag). This procedure is introduced to
 prevent accidental creation of untagged versions.
 
+Building a debug driver:
+If you call 'make debug' the driver is compliled with two additions:
+- A lot of debug output is printed to the kernel log, which slows down the
+  driver.
+- The driver is compiled to produce a code coverage report. This driver can
+  only be loaded on a kernel which has code coverage enabled.
+
+The debug driver cannot be installed. It has to be loaded manually using
+'insmod'. 
