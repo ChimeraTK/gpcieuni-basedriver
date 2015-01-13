@@ -86,6 +86,15 @@
 #define WORD_PROJ_IRQ_FLAGS            0x08
 #define WORD_PROJ_IRQ_CLR_FLAGSE  0x0C
 
+/* FIXME: The pcie bar should be part of the device struct.
+ * The information which BAR contains the DMA control registers
+ * and whether DMA is used at all (and probably which mechanism)
+ * should come from the firmware and be according to SHAPI.
+ * As DMA is hard coded to bar 2 at the moment, we use a define
+ * as intermediate solution.
+ */
+#define PCIEUNI_DMA_BAR 2
+
 struct pcieuni_file_list {
     struct list_head node_file_list;
     struct file *filp;
