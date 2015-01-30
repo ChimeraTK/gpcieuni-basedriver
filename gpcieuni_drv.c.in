@@ -3,7 +3,7 @@
 #include "pcieuni_ufn.h"
 #include "pcieuni_io.h"
 
-MODULE_AUTHOR("Martin Killenberg");
+MODULE_AUTHOR("Ludwig Petrosyan, Tomasz Susnik, Jure Krasna, Martin Killenberg");
 MODULE_DESCRIPTION("Generic base part of the universal PCIe driver pcieuni");
 MODULE_VERSION("@GPCIEUNI_PACKAGE_VERSION@");
 MODULE_LICENSE("Dual BSD/GPL");
