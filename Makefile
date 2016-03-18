@@ -5,7 +5,7 @@ obj-m := gpcieuni.o
 #build for the running kernel
 KVERSION = $(shell uname -r)
 
-ccflags-y = -Wall -Wextra -Wshadow -Wuninitialized
+ccflags-y = -Wall -Wuninitialized
 
 #define the package/module version (the same for this driver)
 GPCIEUNI_PACKAGE_VERSION=0.1.2
