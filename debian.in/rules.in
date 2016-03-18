@@ -8,4 +8,5 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	dh_install *.h *.c gpcieuni_drv.c.in Makefile dkms.post* /usr/src/gpcieuni-@GPCIEUNI_PACKAGE_VERSION@/
+	dh_install *.h /usr/include/gpcieuni
 	dh_dkms
