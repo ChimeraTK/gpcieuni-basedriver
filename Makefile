@@ -5,8 +5,13 @@ obj-m := gpcieuni.o
 #build for the running kernel
 KVERSION = $(shell uname -r)
 
+ccflags-y = -Wall -Wextra -Wshadow -Wuninitialized
+
 #define the package/module version (the same for this driver)
 GPCIEUNI_PACKAGE_VERSION=0.1.1
+
+GPCIEUNI_DKMS_SOURCE_DIR=/usr/src/gpcieuni-${GPCIEUNI_PACKAGE_VERSION}
+HEADER_INSTALL_DIR=/usr/local/include/gpcieuni
 
 #The normal compile step for development
 all: configure-source-files
@@ -15,12 +20,13 @@ all: configure-source-files
 	cp Module.symvers gpcieuni.symvers
 
 #Performs a dkms install
-install: dkms-prepare
+install: dkms-prepare install-headers
 	dkms install -m gpcieuni -v ${GPCIEUNI_PACKAGE_VERSION} -k $(KVERSION)
 
 #Performs a dmks remove
+# || true makes it always report success (you would get an error if already uninstalled otheriwse)
 uninstall:
-	dkms remove -m gpcieuni -v ${GPCIEUNI_PACKAGE_VERSION} -k $(KVERSION)
+	dkms remove -m gpcieuni -v ${GPCIEUNI_PACKAGE_VERSION} -k $(KVERSION) || true
 
 #Compile with debug flag, causes lots of kernel output.
 #In addition the driver is compiled with code coverage. It only loads on
@@ -34,6 +40,10 @@ clean:
 	make -C /lib/modules/$(KVERSION)/build V=1 M=$(PWD) clean
 	rm -f gpcieuni_drv.c
 #do not clean up the gpcieuni.symvers
+
+#Perform a dkms uninstall and remove the headers and
+purge: uninstall
+	rm -rf ${GPCIEUNI_DKMS_SOURCE_DIR} ${HEADER_INSTALL_DIR}
 
 #This target will only succeed on debian machines with the debian packaging tools installed
 debian_package: configure-package-files
@@ -58,5 +68,10 @@ configure-package-files:
 
 #copies the package sources to the place needed by dkms
 dkms-prepare: configure-source-files configure-package-files
-	test -d /usr/src/gpcieuni-${GPCIEUNI_PACKAGE_VERSION} || mkdir /usr/src/gpcieuni-${GPCIEUNI_PACKAGE_VERSION}
-	cp *.h *.c gpcieuni_drv.c.in Makefile dkms.conf dkms.post_* /usr/src/gpcieuni-${GPCIEUNI_PACKAGE_VERSION}
+	test -d ${GPCIEUNI_DKMS_SOURCE_DIR} || mkdir ${GPCIEUNI_DKMS_SOURCE_DIR}
+	cp *.h *.c gpcieuni_drv.c.in Makefile dkms.conf dkms.post_* ${GPCIEUNI_DKMS_SOURCE_DIR}
+
+#install the headers so depedent drivers can find them
+install-headers:
+	test -d ${HEADER_INSTALL_DIR} || mkdir ${HEADER_INSTALL_DIR}
+	cp *.h ${HEADER_INSTALL_DIR}

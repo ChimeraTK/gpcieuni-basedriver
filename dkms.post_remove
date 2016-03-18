@@ -13,16 +13,11 @@ fi
 MODULE=$1
 KERNEL_VERSION=$2
 
-HEADER_DIR=/usr/local/include/$MODULE
 SYMVERS_DIR=/lib/modules/$KERNEL_VERSION/$MODULE
 
 #Be conservative with the rm. An 'rm -rf' with wrong parameters could remove important
 #parts of the kernel module tree. Better first empty what we expect and call rmdir.
 #In case we get the wrong (not empty) directory with rmdir, nothing will happen.
-
-#remove the headers
-rm $HEADER_DIR/*.h
-rmdir $HEADER_DIR
 
 #remove the symvers file
 rm $SYMVERS_DIR/Module.symvers

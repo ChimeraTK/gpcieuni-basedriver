@@ -21,10 +21,6 @@ HEADER_DIR=/usr/local/include/$MODULE
 SYMVERS_DIR=/lib/modules/$KERNEL_VERSION/$MODULE
 BUILD_DIR=$DKMS_TREE/$MODULE/$MODULE_VERSION/build
 
-#install the headers
-test -d $HEADER_DIR || mkdir -p $HEADER_DIR
-cp *.h $HEADER_DIR
-
 #install the symvers file
 test -d $SYMVERS_DIR || mkdir -p $SYMVERS_DIR
 cp $BUILD_DIR/${MODULE}.symvers $SYMVERS_DIR/Module.symvers
