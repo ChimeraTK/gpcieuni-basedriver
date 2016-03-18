@@ -56,7 +56,9 @@ int pcieuni_remove_exp(struct pci_dev *dev, pcieuni_cdev  *pcieuni_cdev_p, char 
     }
      
     printk(KERN_ALERT "REMOVE: UNMAPPING MEMORYs\n");
-    mutex_lock_interruptible(&pcieunidev->dev_mut);
+    // We cannot use mutex_lock_interrutible here. We are in the middle of tearing down the
+    // structure, which cannot safely be interrupted here. Use mutex_lock.
+    mutex_lock(&pcieunidev->dev_mut);
                     
     if(pcieunidev->memmory_base0){
        pci_iounmap(dev, pcieunidev->memmory_base0);

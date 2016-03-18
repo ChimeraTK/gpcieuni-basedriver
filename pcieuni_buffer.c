@@ -89,7 +89,7 @@ void pcieuni_bufferList_clear(pcieuni_buffer_list* list)
             spin_unlock(&list->lock);
             
             PDEBUG(list->parentDev->name, "pcieuni_bufferList_clear(): Waiting for pending operations on buffer to complete...");
-            code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
+            code = wait_event_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
             if (code == 0)
             {
                 printk(KERN_ALERT "PCIEUNI(%s): Timeout waiting for pending operations to complete before buffer is deleted. Memory won't be released!", 
