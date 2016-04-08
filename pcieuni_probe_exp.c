@@ -289,7 +289,7 @@ int    pcieuni_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     }
     /*******PREPARE INTERRUPTS******/
     
-    pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->irq_flag = IRQF_SHARED | IRQF_DISABLED;
+    pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->irq_flag = IRQF_SHARED;
     #ifdef CONFIG_PCI_MSI
     if (pci_enable_msi(dev) == 0) {
             pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->msi = 1;
