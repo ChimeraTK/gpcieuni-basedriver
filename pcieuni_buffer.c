@@ -259,7 +259,7 @@ pcieuni_buffer* pcieuni_bufferList_get_free(pcieuni_buffer_list* list)
         spin_unlock(&list->lock);
 
         PDEBUG(list->parentDev->name, "pcieuni_bufferList_get_free(): Waiting... ");
-        code = wait_event_interruptible_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
+        code = wait_event_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state) , timeout);
         if (code == 0)
         {
             return ERR_PTR(-EBUSY);
@@ -312,6 +312,6 @@ void pcieuni_bufferList_set_free(pcieuni_buffer_list* list, pcieuni_buffer* buff
     spin_unlock(&list->lock);        
     
     // Wake up any process waiting for free buffers
-    wake_up_interruptible(&(list->waitQueue)); 
+    wake_up(&(list->waitQueue)); 
 }
 EXPORT_SYMBOL(pcieuni_bufferList_set_free); 
