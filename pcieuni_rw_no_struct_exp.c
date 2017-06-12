@@ -65,16 +65,6 @@ int checkAndCalculateTransferInformation( pcieuni_dev const * deviceData,
 	    transferInformation->offset);  
   */
 
-  /* Do not allow access to the DMA bar with normal read/write operations from
-   * user space. This is a security issue to avoid DMA injections. Only the driver is
-   * allowed to transfer the DMA target address to the hardware.
-   */
-  if (transferInformation->bar == PCIEUNI_DMA_BAR){
-      printk("PCIEUNI_TRANSFER_INFO_CHECK: Bar %d reserved for DMA. No direct access allowed.\n",
-	     PCIEUNI_DMA_BAR);
-      return -EFAULT;
-  }
-
   /* get the bar's start and end address */
   /* FIXME: organise the information as arrays, not as individual variables, and you might get rid of this block */
   switch (transferInformation->bar){
