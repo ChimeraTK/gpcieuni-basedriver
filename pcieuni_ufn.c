@@ -1,3 +1,4 @@
+#include <asm/uaccess.h>
 #include <linux/module.h>
 #include <linux/fs.h>	
 #include <linux/sched.h>
