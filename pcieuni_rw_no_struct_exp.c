@@ -1,6 +1,6 @@
 #include <linux/module.h>
 #include <linux/fs.h>	
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 #include "pcieuni_ufn.h"
 #include "pcieuni_io.h"
