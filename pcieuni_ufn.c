@@ -4,16 +4,6 @@
 #include <linux/sched.h>
 #include <linux/delay.h>
 
-/*
-#include <linux/kernel.h>
-#include <linux/proc_fs.h>
-#include <linux/sched.h>
-#include <linux/mm.h>
-#include <linux/slab.h>
-#include <linux/uaccess.h>
-#include <asm/types.h>
-*/
-
 #include "pcieuni_ufn.h"
 
 int pcieuni_init_module_exp(pcieuni_cdev **pcieuni_cdev_pp, struct file_operations *pcieuni_fops, char *dev_name) {
