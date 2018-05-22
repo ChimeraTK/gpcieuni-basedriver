@@ -208,7 +208,7 @@ void pcieuni_buffer_destroy(struct pcieuni_dev *dev, pcieuni_buffer *buffer)
     if (buffer->kaddr) 
     {
         // unmap from pci_dev
-        if (buffer->dma_handle != DMA_ERROR_CODE)
+        if (!dma_mapping_error(&dev->pcieuni_pci_dev->dev, buffer->dma_handle))
         {
             dma_unmap_single(&dev->pcieuni_pci_dev->dev, buffer->dma_handle, buffer->size, DMA_FROM_DEVICE);
         }
