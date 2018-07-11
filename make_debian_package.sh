@@ -28,7 +28,7 @@ CHECKOUT_DIRECTORY=${PWD}/debian_package/${GPCIEUNI_PACKAGE_VERSION}
 
 rm -rf debian_package
 mkdir debian_package
-svn co https://svnsrv.desy.de/public/mtca4u/drivers/gpcieuni/tags/${GPCIEUNI_PACKAGE_VERSION} ${CHECKOUT_DIRECTORY}
+git clone . --branch ${GPCIEUNI_PACKAGE_VERSION} --single-branch ${CHECKOUT_DIRECTORY}
 
 cp -r debian_from_template ${CHECKOUT_DIRECTORY}/debian
 
