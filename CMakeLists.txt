@@ -17,6 +17,8 @@ list(GET NEWEST_MODULE_PATH 3 NEWEST_MODULE_VERSION)
 message("Building kernel module for ${NEWEST_MODULE_VERSION}")
 
 add_custom_target(kmod ALL make "KVERSION=${NEWEST_MODULE_VERSION}" WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
-install(CODE "MESSAGE(\"No install\")")
+
+file(GLOB HEADERS *.h)
+install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/gpcieuni)
 enable_testing()
 add_test(NAME dummy COMMAND true)
