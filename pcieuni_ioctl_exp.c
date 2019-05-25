@@ -45,10 +45,14 @@ long     pcieuni_ioctl_exp(struct file *filp, unsigned int *cmd_p, unsigned long
      * access_ok is kernel-oriented, so the concept of "read" and
      * "write" is reversed
      */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)
      if (_IOC_DIR(cmd) & _IOC_READ)
              err = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
      else if (_IOC_DIR(cmd) & _IOC_WRITE)
              err =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+#else
+    err = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
+#endif
      if (err) return -EFAULT;
 
     if (mutex_lock_interruptible(&dev->dev_mut))
