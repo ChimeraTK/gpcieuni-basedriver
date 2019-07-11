@@ -58,13 +58,10 @@ configure-source-files:
 #A target which replaces the version number in the control files for
 #dkms and debian packaging
 configure-package-files:
-	cat dkms.conf.in | sed "{s/@GPCIEUNI_PACKAGE_VERSION@/${GPCIEUNI_PACKAGE_VERSION}/}" > dkms.conf
 	test -d debian_from_template || mkdir debian_from_template
 	cp dkms.conf debian_from_template/gpcieuni-dkms.dkms
 	cp dkms.post_* debian_from_template/
-	(cd debian.in; cp compat  control  copyright ../debian_from_template)
-	cat debian.in/rules.in | sed "{s/@GPCIEUNI_PACKAGE_VERSION@/${GPCIEUNI_PACKAGE_VERSION}/}" > debian_from_template/rules
-	chmod +x debian_from_template/rules
+	(cd debian.in; cp compat  control  copyright rules ../debian_from_template)
 
 #copies the package sources to the place needed by dkms
 dkms-prepare: configure-source-files configure-package-files
