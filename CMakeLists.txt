@@ -20,5 +20,6 @@ add_custom_target(kmod ALL make "KVERSION=${NEWEST_MODULE_VERSION}" WORKING_DIRE
 
 file(GLOB HEADERS *.h)
 install(FILES ${HEADERS} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/gpcieuni)
+install(FILES gpcieuni.symvers DESTINATION /lib/modules/${NEWEST_MODULE_VERSION}/gcpieuni RENAME Module.symvers)
 enable_testing()
 add_test(NAME dummy COMMAND true)
