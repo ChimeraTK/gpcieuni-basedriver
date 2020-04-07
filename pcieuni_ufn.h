@@ -260,10 +260,16 @@ void unregister_gpcieuni_proc(int num, char *dfn);
     int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);
 #else
     ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp );
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
     static const struct file_operations gpcieuni_proc_fops = { 
         .read = pcieuni_procinfo,
     }; 
-#endif
+#else
+    static const struct proc_ops gpcieuni_proc_fops = {
+        .proc_read = pcieuni_procinfo,
+    };
+#endif   /* KERNEL_VERSION(5,6,0) */
+#endif   /* KERNEL_VERSION(3,10,0) */
 
 #endif	/* PCIEUNI_UFN_H */
 
