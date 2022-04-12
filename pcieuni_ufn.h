@@ -248,18 +248,11 @@ ssize_t  pcieuni_read_no_struct_exp(struct file *, char __user *, size_t , loff_
 /** posix style write function without struct */
 ssize_t  pcieuni_write_no_struct_exp(struct file *, const char __user *, size_t , loff_t *);
 
-#if LINUX_VERSION_CODE < 0x20613 /* irq_handler_t has changed in 2.6.19 */
-int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *, struct pt_regs *), pcieuni_dev *, char *);
-#else
 int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), pcieuni_dev *, char *);
-#endif
 
 void register_gpcieuni_proc(int num, char * dfn, pcieuni_dev *p_upcie_dev, pcieuni_cdev *p_upcie_cdev);
 void unregister_gpcieuni_proc(int num, char *dfn);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-    int        pcieuni_procinfo(char *, char **, off_t, int, int *,void *);
-#else
-    ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp );
+ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp );
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
     static const struct file_operations gpcieuni_proc_fops = { 
         .read = pcieuni_procinfo,
@@ -269,7 +262,6 @@ void unregister_gpcieuni_proc(int num, char *dfn);
         .proc_read = pcieuni_procinfo,
     };
 #endif   /* KERNEL_VERSION(5,6,0) */
-#endif   /* KERNEL_VERSION(3,10,0) */
 
 #endif	/* PCIEUNI_UFN_H */
 
