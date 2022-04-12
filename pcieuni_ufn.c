@@ -3,6 +3,7 @@
 #include <linux/fs.h>	
 #include <linux/sched.h>
 #include <linux/delay.h>
+#include <linux/stat.h>
 
 #include "pcieuni_ufn.h"
 
@@ -464,67 +465,63 @@ void register_gpcieuni_proc(int num, char * dfn, struct pcieuni_dev     *p_upcie
     p_upcie_cdev->pcieuni_procdir = proc_create_data(prc_entr, S_IFREG | S_IRUGO, 0, &gpcieuni_proc_fops, p_upcie_dev);
 }
 
-void unregister_gpcieuni_proc(int num, char *dfn)
-{
-    char prc_entr[32];
-    sprintf(prc_entr, "%ss%i", dfn, num);
-    remove_proc_entry(prc_entr,0);
+void unregister_gpcieuni_proc(int num, char* dfn) {
+  char prc_entr[32];
+  sprintf(prc_entr, "%ss%i", dfn, num);
+  remove_proc_entry(prc_entr, 0);
 }
 
-ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp)
+static int pcieuni_procinfo(struct seq_file *m, void *v)
 {
-    char *p;
-    int cnt = 0;
     pcieuni_dev     *pcieuni_dev_m ;
     struct list_head *pos;
     struct pcieuni_prj_info  *tmp_prj_info_list;
-    pcieuni_dev_m=PDE_DATA(file_inode(filp));
+    pcieuni_dev_m = m->private;
         
-    printk(KERN_INFO "PCIEUNI_PROC_INFO CALLEDi\n");
+    printk(KERN_INFO "PCIEUNI_PROC_INFO CALLED\n");
 
-    p = buf;
-    p += sprintf(p, "GPCIEUNI Driver Version:\t%i.%i\n",
+    seq_printf(m, "GPCIEUNI Driver Version:\t%i.%i\n",
             pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ,
             pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);
-    p += sprintf(p, "Driver Version:\t%i.%i\n",
+    seq_printf(m, "Driver Version:\t%i.%i\n",
             pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MAJ,
             pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MIN);
-    p += sprintf(p,"Board NUM:\t%i\n", pcieuni_dev_m->brd_num);
-    p += sprintf(p,"Slot    NUM:\t%i\n", pcieuni_dev_m->slot_num);
-    p += sprintf(p, "Board ID:\t%X\n",
+    seq_printf(m,"Board NUM:\t%i\n", pcieuni_dev_m->brd_num);
+    seq_printf(m,"Slot    NUM:\t%i\n", pcieuni_dev_m->slot_num);
+    seq_printf(m, "Board ID:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_ID);
-    p += sprintf(p, "Board Version;\t%X\n",
+    seq_printf(m, "Board Version;\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_VERSION);
-    p += sprintf(p, "Board Date:\t%X\n",
+    seq_printf(m, "Board Date:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_DATE);
-    p += sprintf(p, "Board HW Ver:\t%X\n",
+    seq_printf(m, "Board HW Ver:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_HW_VERSION);
-    p += sprintf(p, "Board Next Prj:\t%X\n",
+    seq_printf(m, "Board Next Prj:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_PROJ_NEXT);
-    p += sprintf(p, "Board Reserved:\t%X\n",
+    seq_printf(m, "Board Reserved:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_RESERVED);
-    p += sprintf(p,"Number of Proj:\t%i\n", pcieuni_dev_m->startup_prj_num);
+    seq_printf(m,"Number of Proj:\t%i\n", pcieuni_dev_m->startup_prj_num);
     
     list_for_each(pos,  &pcieuni_dev_m->prj_info_list.prj_list ){
         tmp_prj_info_list = list_entry(pos, struct pcieuni_prj_info, prj_list);
-        p += sprintf(p, "Project ID:\t%X\n",
+        seq_printf(m, "Project ID:\t%X\n",
                 tmp_prj_info_list->PCIEUNI_PROJ_ID);
-        p += sprintf(p, "Project Version:\t%X\n",
+        seq_printf(m, "Project Version:\t%X\n",
                 tmp_prj_info_list->PCIEUNI_PROJ_VERSION);
-        p += sprintf(p, "Project Date:\t%X\n",
+        seq_printf(m, "Project Date:\t%X\n",
                 tmp_prj_info_list->PCIEUNI_PROJ_DATE);
-        p += sprintf(p, "Project Reserver:\t%X\n",
+        seq_printf(m, "Project Reserved:\t%X\n",
                 tmp_prj_info_list->PCIEUNI_PROJ_RESERVED);
-        p += sprintf(p, "Project Next:\t%X\n",
+        seq_printf(m, "Project Next:\t%X\n",
                 tmp_prj_info_list->PCIEUNI_PROJ_NEXT);
     }
 
-    cnt = strlen(p);
-    printk(KERN_INFO "PCIEUNI_PROC_INFO: PROC LEN%i\n", cnt);
-    copy_to_user(buf,p, (size_t)cnt);
-    return cnt;
+    return 0;
 }
-EXPORT_SYMBOL(pcieuni_procinfo);
+int pcieuni_proc_open(struct inode* inode, struct file* file) {
+  return single_open(file, pcieuni_procinfo, PDE_DATA(inode));
+}
+EXPORT_SYMBOL(pcieuni_proc_open);
 
 /**
  * @brief Writes 32bit value to memory mapped device register

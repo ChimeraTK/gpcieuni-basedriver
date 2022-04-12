@@ -15,6 +15,7 @@
 #include <linux/interrupt.h>
 #include <linux/fs.h>	
 #include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 
 /**
@@ -243,6 +244,8 @@ int     pcieuni_get_brdinfo(pcieuni_dev *);
 
 int     pcieuni_register_write32(struct pcieuni_dev *dev, void* bar, u32 offset, u32 value, bool ensureFlush);
 
+int     pcieuni_proc_open(struct inode *inode, struct file *file);
+
 /** posix style read function without struct */
 ssize_t  pcieuni_read_no_struct_exp(struct file *, char __user *, size_t , loff_t *);
 /** posix style write function without struct */
@@ -252,14 +255,21 @@ int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int , void *), pcie
 
 void register_gpcieuni_proc(int num, char * dfn, pcieuni_dev *p_upcie_dev, pcieuni_cdev *p_upcie_cdev);
 void unregister_gpcieuni_proc(int num, char *dfn);
-ssize_t pcieuni_procinfo(struct file *filp,char *buf,size_t count,loff_t *offp );
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
-    static const struct file_operations gpcieuni_proc_fops = { 
-        .read = pcieuni_procinfo,
+    static const struct file_operations gpcieuni_proc_fops = {
+        .owner = THIS_MODULE,
+        .open = pcieuni_proc_open,
+        .read = seq_read,
+        .llseek = seq_lseek,
+        .release = single_release,
     }; 
 #else
     static const struct proc_ops gpcieuni_proc_fops = {
-        .proc_read = pcieuni_procinfo,
+        .proc_open = pcieuni_proc_open,
+        .proc_read = seq_read,
+        .proc_lseek = seq_lseek,
+        .proc_release = single_release,
     };
 #endif   /* KERNEL_VERSION(5,6,0) */
 
