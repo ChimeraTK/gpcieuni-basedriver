@@ -61,7 +61,7 @@ configure-package-files:
 	test -d debian_from_template || mkdir debian_from_template
 	cp dkms.conf debian_from_template/gpcieuni-dkms.dkms
 	cp dkms.post_* debian_from_template/
-	(cd debian.in; cp compat  control  copyright rules ../debian_from_template)
+	(cd debian.in; cp -r compat  control  copyright rules source ../debian_from_template)
 
 #copies the package sources to the place needed by dkms
 dkms-prepare: configure-source-files configure-package-files
