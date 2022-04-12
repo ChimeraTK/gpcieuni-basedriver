@@ -24,7 +24,7 @@ test -d debian_from_template || exit -2
 #We only allow to make debian packages from tagged versions.
 #For this we check out the tag from svn to make sure it's there, and build
 #the package from this checkout to make sure the code has not been modified.
-CHECKOUT_DIRECTORY=${PWD}/debian_package/${GPCIEUNI_PACKAGE_VERSION}
+CHECKOUT_DIRECTORY=${PWD}/debian_package/gpcieuni-dkms-${GPCIEUNI_PACKAGE_VERSION}
 
 rm -rf debian_package
 mkdir debian_package
