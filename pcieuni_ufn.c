@@ -487,10 +487,10 @@ static int pcieuni_procinfo(struct seq_file *m, void *v)
             pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MAJ,
             pcieuni_dev_m->parent_dev->PCIEUNI_DRV_VER_MIN);
     seq_printf(m,"Board NUM:\t%i\n", pcieuni_dev_m->brd_num);
-    seq_printf(m,"Slot    NUM:\t%i\n", pcieuni_dev_m->slot_num);
+    seq_printf(m,"Slot NUM:\t%i\n", pcieuni_dev_m->slot_num);
     seq_printf(m, "Board ID:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_ID);
-    seq_printf(m, "Board Version;\t%X\n",
+    seq_printf(m, "Board Version:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_VERSION);
     seq_printf(m, "Board Date:\t%X\n",
             pcieuni_dev_m->brd_info_list.PCIEUNI_BOARD_DATE);
