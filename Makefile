@@ -8,7 +8,7 @@ KVERSION = $(shell uname -r)
 ccflags-y = -Wall -Wuninitialized
 
 #define the package/module version (the same for this driver)
-GPCIEUNI_PACKAGE_VERSION=0.1.7
+GPCIEUNI_PACKAGE_VERSION=0.1.8
 
 GPCIEUNI_DKMS_SOURCE_DIR=/usr/src/gpcieuni-${GPCIEUNI_PACKAGE_VERSION}
 HEADER_INSTALL_DIR=/usr/local/include/gpcieuni

@@ -6,7 +6,7 @@ include /usr/share/dpkg/pkg-info.mk
 	dh $@ --with dkms
 
 override_dh_auto_install:
-	dh_install *.h *.c gpcieuni_drv.c.in Makefile dkms.post* usr/src/gpcieuni-$(DEB_VERSION_UPSTREAM)/
+	dh_install *.h *.c version.h.in Makefile dkms.post* usr/src/gpcieuni-$(DEB_VERSION_UPSTREAM)/
 	dh_install *.h usr/include/gpcieuni
 
 override_dh_dkms:
