@@ -1,0 +1,3 @@
+@Library('ChimeraTK') _
+autojob([], 'https://github.com/ChimeraTK/gpcieuni-basedriver.git')
+
