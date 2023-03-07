@@ -519,7 +519,12 @@ static int pcieuni_procinfo(struct seq_file *m, void *v)
     return 0;
 }
 int pcieuni_proc_open(struct inode* inode, struct file* file) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,17,0)
   return single_open(file, pcieuni_procinfo, PDE_DATA(inode));
+#else
+  return single_open(file, pcieuni_procinfo, pde_data(inode));
+#endif
+
 }
 EXPORT_SYMBOL(pcieuni_proc_open);
 
