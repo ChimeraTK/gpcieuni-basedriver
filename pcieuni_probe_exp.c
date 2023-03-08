@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>	
 #include <linux/proc_fs.h>
+#include <linux/dma-mapping.h>
 
 #include "pcieuni_ufn.h"
 
@@ -127,19 +128,12 @@ int    pcieuni_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     /*tmp_payload_size = 128; */
     printk(KERN_ALERT "DAMC: DEVICE PAYLOAD  %d\n",tmp_payload_size);
     
-
-    if (!(cur_mask = pci_set_dma_mask(dev, DMA_BIT_MASK(64))) &&
-        !(cur_mask = pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64)))) {
+    if (dma_set_mask_and_coherent(&dev->dev, DMA_BIT_MASK(64)) == 0) {
             pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_dma_64mask = 1;
-            printk(KERN_ALERT "CURRENT 64MASK %i\n", cur_mask);
+    } else if (dma_set_mask_and_coherent(&dev->dev, DMA_BIT_MASK(32)) == 0) {
+            pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_dma_64mask = 0;
     } else {
-            if ((err = pci_set_dma_mask(dev, DMA_BIT_MASK(32))) &&
-                (err = pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(32)))) {
-                    printk(KERN_ALERT "No usable DMA configuration\n");
-            }else{
-                pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_dma_64mask = 0;
-                printk(KERN_ALERT "CURRENT 32MASK %i\n", cur_mask);
-            }
+            printk(KERN_ALERT "No usable DMA configuration\n");
     }
 
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems = 0;
