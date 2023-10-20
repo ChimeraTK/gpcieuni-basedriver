@@ -38,7 +38,12 @@ int pcieuni_init_module_exp(pcieuni_cdev **pcieuni_cdev_pp, struct file_operatio
     pcieuni_cdev_p->PCIEUNI_MAJOR = MAJOR(devt);
 
     /* Populate sysfs entries */
+/* see linux kernel commit 1aaba11da9aa7d7d6b52a74d45b31cac118295a1 */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 3, 0)
+    pcieuni_cdev_p->pcieuni_class = class_create(dev_name);
+#else
     pcieuni_cdev_p->pcieuni_class = class_create(pcieuni_fops->owner, dev_name);
+#endif
 
     /*Get module driver version information*/
     pcieuni_cdev_p->GPCIEUNI_VER_MAJ = simple_strtol(THIS_MODULE->version,
