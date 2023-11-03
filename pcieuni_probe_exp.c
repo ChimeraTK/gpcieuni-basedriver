@@ -26,7 +26,6 @@ int    pcieuni_probe_exp(struct pci_dev *dev, const struct pci_device_id *id,
     int tmp_dev_num      = 0;
     int tmp_bus_func     = 0;
     
-     int cur_mask = 0;
     u8  dev_payload;
     u32 tmp_payload_size = 0;
 
