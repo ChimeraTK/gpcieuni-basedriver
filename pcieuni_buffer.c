@@ -85,13 +85,13 @@ void pcieuni_bufferList_clear(pcieuni_buffer_list* list) {
           list->parentDev->name, "pcieuni_bufferList_clear(): Waiting for pending operations on buffer to complete...");
       code = wait_event_timeout(list->waitQueue, test_bit(BUFFER_STATE_AVAILABLE, &buffer->state), timeout);
       if(code == 0) {
-        printk(KERN_ALERT "PCIEUNI(%s): Timeout waiting for pending operations to complete before buffer is deleted. "
-                          "Memory won't be released!",
+        printk(KERN_ERR "gpcieuni(%s): timeout waiting for pending operations to complete before buffer is deleted. "
+                        "Memory won't be released!",
             list->parentDev->name);
       }
       else if(code < 0) {
-        printk(KERN_ALERT "PCIEUNI(%s): Interrupted while waiting for pending operations to complete before buffer is "
-                          "deleted. Memory won't be released!",
+        printk(KERN_ERR "gpcieuni(%s): interrupted while waiting for pending operations to complete before buffer is "
+                        "deleted. Memory won't be released!",
             list->parentDev->name);
       }
 
@@ -149,7 +149,7 @@ pcieuni_buffer* pcieuni_buffer_create(struct pcieuni_dev* dev, unsigned long buf
   // allocate memory block
   buffer->kaddr = __get_free_pages(GFP_KERNEL | __GFP_DMA, buffer->order);
   if(!buffer->kaddr) {
-    printk(KERN_ERR "pcieuni_buffer_create(): can't get free pages of order %u\n", buffer->order);
+    printk(KERN_ERR "gpcieuni(%s): cannot create buffer, no free pages of order %u\n", dev->name, buffer->order);
 
     pcieuni_buffer_destroy(dev, buffer);
     return ERR_PTR(-ENOMEM);
@@ -163,12 +163,12 @@ pcieuni_buffer* pcieuni_buffer_create(struct pcieuni_dev* dev, unsigned long buf
   // map to pci_dev
   buffer->dma_handle = dma_map_single(&dev->pcieuni_pci_dev->dev, (void*)buffer->kaddr, buffer->size, DMA_FROM_DEVICE);
   if(dma_mapping_error(&dev->pcieuni_pci_dev->dev, buffer->dma_handle)) {
-    printk(KERN_ERR "pcieuni_buffer_create(): dma mapping error\n");
+    printk(KERN_ERR "gpcieuni(%s): DMA mapping error\n", dev->name);
     pcieuni_buffer_destroy(dev, buffer);
     return ERR_PTR(-ENOMEM);
   }
 
-  printk(KERN_INFO "PCIEUNI(%s): Allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
+  printk(KERN_INFO "gpcieuni(%s): allocated DMA buffer of size 0x%lx\n", dev->name, buffer->size);
   return buffer;
 }
 EXPORT_SYMBOL(pcieuni_buffer_create);
@@ -184,10 +184,10 @@ EXPORT_SYMBOL(pcieuni_buffer_create);
 void pcieuni_buffer_destroy(struct pcieuni_dev* dev, pcieuni_buffer* buffer) {
   unsigned long iter = 0;
 
-  PDEBUG(dev->name, "pcieuni_buffer_destroy(buffer=%p)", buffer);
+  PDEBUG(dev->name, "gpcieuni_buffer_destroy(buffer=%p)", buffer);
 
   if(!buffer) {
-    printk(KERN_ERR "PCIEUNI(%s): Got request to release unallocated buffer!\n", dev->name);
+    printk(KERN_ERR "gpcieuni(%s): got request to release unallocated buffer!\n", dev->name);
     return;
   }
 

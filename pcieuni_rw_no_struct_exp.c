@@ -32,22 +32,19 @@ int checkAndCalculateTransferInformation(
     pcieuni_dev const* deviceData, size_t count, loff_t virtualOffset, transfer_information* transferInformation) {
   /* check that the device is there (what the f* is sts?)*/
   if(!deviceData->dev_sts) {
-    printk("PCIEUNI_WRITE_EXP: NO DEVICE %d\n", deviceData->dev_num);
+    printk(KERN_DEBUG "gpcieuni: no device: %d\n", deviceData->dev_num);
     return -EFAULT;
   }
 
   /* check the input data. Only 32 bit reads are supported */
   if(virtualOffset % 4) {
-    printk("%s\n", "Incorrect position, has the be a multiple of 4");
+    printk(KERN_DEBUG "gpcieuni(%s): incorrect position, has the be a multiple of 4\n", deviceData->name);
     return -EFAULT;
   }
   if(count % 4) {
-    printk("%s\n", "Incorrect size, has the be a multiple of 4");
+    printk(KERN_DEBUG "gpcieuni(%s): incorrect size, has the be a multiple of 4\n", deviceData->name);
     return -EFAULT;
   }
-
-  /*  printk("gpcieuni::checkAndCalculateTransferInformation: count %zx , virtualOffsets %Lx\n", count, virtualOffset );
-   */
 
   /* Before locking the mutex check if the request is valid (do not write after the end of the bar). */
   /* Do not access the registers, only check the pointer values without locking the mutex! */
@@ -56,11 +53,6 @@ int checkAndCalculateTransferInformation(
   transferInformation->bar = (virtualOffset >> 60) & 0x7;
   /* mask out the bar position from the offset */
   transferInformation->offset = virtualOffset & 0x0FFFFFFFFFFFFFFFL;
-
-  /*  printk("gpcieuni::checkAndCalculateTransferInformation: bar %x, offset %lx\n",
-            transferInformation->bar,
-            transferInformation->offset);
-  */
 
   /* get the bar's start and end address */
   /* FIXME: organise the information as arrays, not as individual variables, and you might get rid of this block */
@@ -73,27 +65,22 @@ int checkAndCalculateTransferInformation(
     DEFINE_BAR_START_AND_SIZE(5);
 
     default:
-      printk("PCIEUNI_TRANSFER_INFO_CHECK: Invalid bar number %d\n", transferInformation->bar);
+      printk(KERN_DEBUG "gpcieuni(%s): Invalid BAR number %d\n", deviceData->name, transferInformation->bar);
       return -EFAULT;
   }
 
   if(!transferInformation->barStart) {
-    printk("BAR %d not implemented in this device", transferInformation->bar);
+    printk(
+        KERN_DEBUG "gpcieuni(%s): BAR %d not implemented in this device", deviceData->name, transferInformation->bar);
     return -EFAULT;
   }
 
   /* When adding to a pointer, the + operator expects number of items, not the size in bytes */
   transferInformation->barEnd = transferInformation->barStart + transferInformation->barSizeInBytes / sizeof(u32);
 
-  /*
-  printk("gpcieuni::checkAndCalculateTransferInformation: barStart %p, barSize %lx, barEnd %p\n",
-            transferInformation->barStart, transferInformation->barSizeInBytes,
-            transferInformation->barEnd);
-  */
-
   /* check that writing does not start after the end of the bar */
   if(transferInformation->offset > transferInformation->barSizeInBytes) {
-    printk("%s\n", "Cannot start writing after the end of the bar.");
+    printk(KERN_DEBUG "gpcieuni(%s): Cannot start writing after the end of the BAR.\n", deviceData->name);
     return -EFAULT;
   }
 
@@ -102,11 +89,6 @@ int checkAndCalculateTransferInformation(
   transferInformation->nBytesToTransfer = ((transferInformation->barSizeInBytes < transferInformation->offset + count) ?
           transferInformation->barSizeInBytes - transferInformation->offset :
           count);
-
-  /*
-  printk("gpcieuni::checkAndCalculateTransferInformation:  nBytesToTransfer %x, count %lx",
-         transferInformation->nBytesToTransfer, count);
-  */
 
   return 0;
 }
@@ -131,7 +113,7 @@ ssize_t pcieuni_read_no_struct_exp(struct file* filp, char __user* buf, size_t c
 
   /* now we really want to access, so we need the mutex */
   if(mutex_lock_interruptible(&deviceData->dev_mut)) {
-    printk("mutex_lock_interruptible %s\n", "- locking attempt was interrupted by a signal");
+    printk(KERN_DEBUG "gpcieuni(%s): locking attempt was interrupted by a signal\n", deviceData->name);
     return -ERESTARTSYS;
   }
 
@@ -183,7 +165,7 @@ ssize_t pcieuni_write_no_struct_exp(struct file* filp, const char __user* buf, s
 
   /* now we really want to access, so we need the mutex */
   if(mutex_lock_interruptible(&deviceData->dev_mut)) {
-    printk("mutex_lock_interruptible %s\n", "- locking attempt was interrupted by a signal");
+    printk(KERN_DEBUG "gpcieuni(%s): locking attempt was interrupted by a signal\n", deviceData->name);
     return -ERESTARTSYS;
   }
 
