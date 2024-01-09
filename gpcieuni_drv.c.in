@@ -1,28 +1,22 @@
-#include <linux/module.h>
-
-#include "pcieuni_ufn.h"
 #include "pcieuni_io.h"
+#include "pcieuni_ufn.h"
+#include <linux/module.h>
 
 MODULE_AUTHOR("Ludwig Petrosyan, Tomasz Susnik, Jure Krasna, Martin Killenberg");
 MODULE_DESCRIPTION("Generic base part of the universal PCIe driver pcieuni");
 MODULE_VERSION("@GPCIEUNI_PACKAGE_VERSION@");
 MODULE_LICENSE("Dual BSD/GPL");
 
-
-static void __exit pcieuni_cleanup_module(void)
-{
-    printk(KERN_NOTICE "GPCIEUNI_CLEANUP_MODULE CALLED\n");
+static void __exit pcieuni_cleanup_module(void) {
+  printk(KERN_NOTICE "GPCIEUNI_CLEANUP_MODULE CALLED\n");
 }
 
-static int __init pcieuni_init_module(void)
-{
-    int   result  = 0;
-    
-    printk(KERN_ALERT "GPCIEUNI_INIT:REGISTERING PCI DRIVER\n");
-    return result; /* succeed */
+static int __init pcieuni_init_module(void) {
+  int result = 0;
+
+  printk(KERN_ALERT "GPCIEUNI_INIT:REGISTERING PCI DRIVER\n");
+  return result; /* succeed */
 }
 
 module_init(pcieuni_init_module);
 module_exit(pcieuni_cleanup_module);
-
-
