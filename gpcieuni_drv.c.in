@@ -8,13 +8,13 @@ MODULE_VERSION("@GPCIEUNI_PACKAGE_VERSION@");
 MODULE_LICENSE("Dual BSD/GPL");
 
 static void __exit pcieuni_cleanup_module(void) {
-  printk(KERN_NOTICE "GPCIEUNI_CLEANUP_MODULE CALLED\n");
+  printk(KERN_INFO "gpcieuni: PCIe base driver module cleanup\n");
 }
 
 static int __init pcieuni_init_module(void) {
   int result = 0;
 
-  printk(KERN_ALERT "GPCIEUNI_INIT:REGISTERING PCI DRIVER\n");
+  printk(KERN_INFO "gpcieuni: PCIe base driver registered\n");
   return result; /* succeed */
 }
 

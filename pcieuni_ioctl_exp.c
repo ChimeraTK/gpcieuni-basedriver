@@ -32,7 +32,7 @@ long pcieuni_ioctl_exp(struct file* filp, unsigned int* cmd_p, unsigned long* ar
   pdev = (dev->pcieuni_pci_dev);
 
   if(!dev->dev_sts) {
-    printk("PCIEUNI_IOCTRL: NO DEVICE %d\n", dev->dev_num);
+    printk(KERN_DEBUG "gpcieuni: ioctl called for non-existing device %d\n", dev->dev_num);
     retval = -EFAULT;
     return retval;
   }

@@ -16,11 +16,9 @@ int pcieuni_init_module_exp(pcieuni_cdev** pcieuni_cdev_pp, struct file_operatio
   char** endptr = 0;
   pcieuni_cdev* pcieuni_cdev_p;
 
-  printk(KERN_ALERT "############GPCIEUNI_INIT MODULE  NAME %s\n", dev_name);
-
   pcieuni_cdev_p = kzalloc(sizeof(pcieuni_cdev), GFP_KERNEL);
   if(!pcieuni_cdev_p) {
-    printk(KERN_ALERT "GPCIEUNI_INIT CREATE CDEV STRUCT NO MEM\n");
+    printk(KERN_ALERT "gpcieuni(%s): no memory to create CDEV structure\n", dev_name);
     return -ENOMEM;
   }
 
@@ -48,19 +46,16 @@ int pcieuni_init_module_exp(pcieuni_cdev** pcieuni_cdev_pp, struct file_operatio
   pcieuni_cdev_p->GPCIEUNI_VER_MAJ = simple_strtol(THIS_MODULE->version, endptr, 10);
   pcieuni_cdev_p->GPCIEUNI_VER_MIN = simple_strtol(THIS_MODULE->version + 2, endptr, 10);
 
-  printk(KERN_ALERT "&&&&&GPCIEUNI_INIT CALLED; GPCIEUNI MODULE VERSION %i.%i\n", pcieuni_cdev_p->GPCIEUNI_VER_MAJ,
-      pcieuni_cdev_p->GPCIEUNI_VER_MIN);
-
   pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ = simple_strtol(pcieuni_fops->owner->version, endptr, 10);
   pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN = simple_strtol(pcieuni_fops->owner->version + 2, endptr, 10);
 
-  printk(KERN_ALERT "&&&&&GPCIEUNI_INIT CALLED; THIS MODULE VERSION %i.%i\n", pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ,
-      pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN);
+  printk(KERN_INFO "gpcieuni base version %i.%i, driver version %i.%i\n", pcieuni_cdev_p->GPCIEUNI_VER_MAJ,
+      pcieuni_cdev_p->GPCIEUNI_VER_MIN, pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ, pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN);
 
   for(i = 0; i <= PCIEUNI_NR_DEVS; i++) {
     pcieuni_cdev_p->pcieuni_dev_m[i] = kzalloc(sizeof(pcieuni_dev), GFP_KERNEL);
     if(!pcieuni_cdev_p->pcieuni_dev_m[i]) {
-      printk(KERN_ALERT "AFTER_INIT CREATE DEV STRUCT NO MEM\n");
+      printk(KERN_ERR "gpcieuni(%s): no memory to create device structure\n", dev_name);
 
       for(k = 0; k < i; k++) {
         if(pcieuni_cdev_p->pcieuni_dev_m[k]) {
@@ -88,7 +83,7 @@ int pcieuni_init_module_exp(pcieuni_cdev** pcieuni_cdev_pp, struct file_operatio
     /* The device is now live and the device file should be available */
     result = cdev_add(&(pcieuni_cdev_p->pcieuni_dev_m[i]->cdev), devno, 1);
     if(result) {
-      printk(KERN_NOTICE "Error %d adding devno%d num%d\n", result, devno, i);
+      printk(KERN_WARNING "gpcieuni(%s): error %d adding devno%d num%d\n", dev_name, result, devno, i);
       return 1;
     }
 
@@ -121,8 +116,6 @@ void pcieuni_cleanup_module_exp(pcieuni_cdev** pcieuni_cdev_p) {
   dev_t devno;
   pcieuni_cdev* pcieuni_cdev_m = *pcieuni_cdev_p;
 
-  printk(KERN_ALERT "GPCIEUNI_CLEANUP_MODULE CALLED\n");
-
   devno = MKDEV(pcieuni_cdev_m->PCIEUNI_MAJOR, pcieuni_cdev_m->PCIEUNI_MINOR);
   unregister_chrdev_region(devno, (PCIEUNI_NR_DEVS + 1));
   class_destroy(pcieuni_cdev_m->pcieuni_class);
@@ -142,7 +135,6 @@ int pcieuni_open_exp(struct inode* inode, struct file* filp) {
   int minor;
   pcieuni_dev* dev;
   pcieuni_file_list* tmp_file_list;
-  pcieuni_file_list* tmp;
 
   minor = iminor(inode);
   dev = container_of(inode->i_cdev, struct pcieuni_dev, cdev);
@@ -160,15 +152,7 @@ int pcieuni_open_exp(struct inode* inode, struct file* filp) {
   tmp_file_list->filp = filp;
   list_add(&(tmp_file_list->node_file_list), &(dev->dev_file_list.node_file_list));
 
-  printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d FILE_REF %i fops open (filp %p)\n", current->comm,
-      current->pid, minor, dev->dev_file_ref, filp);
-
-  list_for_each_entry(tmp, &(dev->dev_file_list.node_file_list), node_file_list)
-      printk(KERN_ALERT "FILE_REF %i fops open (filp %p)\n", tmp->file_cnt, tmp->filp);
-
   mutex_unlock(&dev->dev_mut);
-
-  // printk(KERN_ALERT "Open Procces is \"%s\" (pid %i) DEV is %d \n", current->comm, current->pid, minor);
   return 0;
 }
 EXPORT_SYMBOL(pcieuni_open_exp);
@@ -177,7 +161,6 @@ int pcieuni_release_exp(struct inode* inode, struct file* filp) {
   struct pcieuni_dev* dev = filp->private_data;
   u16 cur_proc = 0;
   pcieuni_file_list* tmp_file_list;
-  pcieuni_file_list* tmp;
   struct list_head *pos, *q;
 
   if(mutex_lock_interruptible(&dev->dev_mut)) {
@@ -188,18 +171,11 @@ int pcieuni_release_exp(struct inode* inode, struct file* filp) {
 
   list_for_each_safe(pos, q, &(dev->dev_file_list.node_file_list)) {
     tmp_file_list = list_entry(pos, pcieuni_file_list, node_file_list);
-    printk(KERN_ALERT "FILE_REF %i, fops open (filp %p)\n", tmp_file_list->file_cnt, filp);
     if(tmp_file_list->filp == filp) {
-      printk(KERN_ALERT "FREE FILE LIST ENTRY\n");
       list_del(pos);
       kfree(tmp_file_list);
     }
   }
-
-  printk(KERN_ALERT "Close Procces is \"%s\" (pid %i) FILE_REF %i, fops open (filp %p)\n", current->comm, current->pid,
-      dev->dev_file_ref, filp);
-  list_for_each_entry(tmp, &(dev->dev_file_list.node_file_list), node_file_list)
-      printk(KERN_ALERT "FILE_REF %i, fops open (filp %p)\n", tmp->file_cnt, tmp->filp);
 
   mutex_unlock(&dev->dev_mut);
   return 0;
@@ -271,9 +247,9 @@ int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int, void*), struct
   /*******SETUP INTERRUPTS******/
   pdev->irq_mode = 1;
   result = request_irq(pdev->pci_dev_irq, pcieuni_interrupt, pdev->irq_flag, dev_name, pdev);
-  printk(KERN_INFO "PCIEUNI_PROBE:  assigned IRQ %i RESULT %i\n", pdev->pci_dev_irq, result);
+  printk(KERN_INFO "gpcieuni(%s): assigned IRQ %i RESULT %i\n", dev_name, pdev->pci_dev_irq, result);
   if(result) {
-    printk(KERN_INFO "PCIEUNI_PROBE: can't get assigned irq %i\n", pdev->pci_dev_irq);
+    printk(KERN_WARNING "gpcieuni(%s): can't get assigned irq %i\n", dev_name, pdev->pci_dev_irq);
     pdev->irq_mode = 0;
   }
   return result;
@@ -453,8 +429,6 @@ static int pcieuni_procinfo(struct seq_file* m, void* v) {
   struct list_head* pos;
   struct pcieuni_prj_info* tmp_prj_info_list;
   pcieuni_dev_m = m->private;
-
-  printk(KERN_INFO "PCIEUNI_PROC_INFO CALLED\n");
 
   seq_printf(m, "GPCIEUNI Driver Version:\t%i.%i\n", pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MAJ,
       pcieuni_dev_m->parent_dev->GPCIEUNI_VER_MIN);

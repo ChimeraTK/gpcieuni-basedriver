@@ -37,21 +37,16 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
 
   char prc_entr[64];
 
-  printk(KERN_ALERT "############PCIEUNI_PROBE THIS IS U_FUNCTION NAME %s\n", dev_name);
-
   /*************************CDEV INIT******************************************************/
-  printk(KERN_WARNING "PCIEUNIINIT_MODULE CALLED\n");
 
   /*setup device*/
   for(m_brdNum = 0; m_brdNum < PCIEUNI_NR_DEVS; m_brdNum++) {
     if(!pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->binded) break;
   }
   if(m_brdNum == PCIEUNI_NR_DEVS) {
-    printk(KERN_ALERT "AFTER_INIT NO MORE DEVICES is %d\n", m_brdNum);
     return -1;
   }
 
-  printk(KERN_ALERT "PCIEUNI_PROBE_DEV_INIT: BOARD NUM %i\n", m_brdNum);
   *brd_num = m_brdNum;
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->binded = 1;
 
@@ -69,23 +64,17 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   devNumber = (u32)PCI_SLOT(tmp_devfn);
   funcNumber = (u32)PCI_FUNC(tmp_devfn);
   tmp_bus_func = ((busNumber & 0xFF) << 8) + (devNumber & 0xFF);
-  printk(KERN_ALERT "PCIEUNI_PROBE:DEVFN %X, BUS_NUM %X, DEV_NUM %X, FUNC_NUM %X, BUS_FUNC %x\n", tmp_devfn, busNumber,
-      devNumber, funcNumber, tmp_bus_func);
 
   tmp_devfn = (u32)dev->bus->self->devfn;
   busNumber = (u32)dev->bus->self->bus->number;
   devNumber = (u32)PCI_SLOT(tmp_devfn);
   funcNumber = (u32)PCI_FUNC(tmp_devfn);
-  printk(KERN_ALERT "PCIEUNI_PROBE:DEVFN %X, BUS_NUM %X, DEV_NUM %X, FUNC_NUM %X\n", tmp_devfn, busNumber, devNumber,
-      funcNumber);
 
   pcie_cap = pci_find_capability(dev->bus->self, PCI_CAP_ID_EXP);
-  printk(KERN_INFO "PCIEUNI_PROBE: PCIE SWITCH CAP address %X\n", pcie_cap);
 
   pci_read_config_dword(dev->bus->self, (pcie_cap + PCI_EXP_SLTCAP), &tmp_slot_cap);
   tmp_slot_num = (tmp_slot_cap >> 19);
   tmp_dev_num = tmp_slot_num;
-  printk(KERN_ALERT "PCIEUNI_PROBE:SLOT NUM %d DEV NUM%d SLOT_CAP %X\n", tmp_slot_num, tmp_dev_num, tmp_slot_cap);
 
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->slot_num = tmp_slot_num;
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_num = tmp_dev_num;
@@ -95,10 +84,8 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   dev_set_drvdata(&(dev->dev), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]);
 
   pcie_cap = pci_find_capability(dev, PCI_CAP_ID_EXP);
-  printk(KERN_ALERT "DAMC_PROBE: PCIE CAP address %X\n", pcie_cap);
   pci_read_config_byte(dev, (pcie_cap + PCI_EXP_DEVCAP), &dev_payload);
   dev_payload &= 0x0003;
-  printk(KERN_ALERT "DAMC_PROBE: DEVICE CAP  %X\n", dev_payload);
 
   switch(dev_payload) {
     case 0:
@@ -121,7 +108,6 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
       break;
   }
   /*tmp_payload_size = 128; */
-  printk(KERN_ALERT "DAMC: DEVICE PAYLOAD  %d\n", tmp_payload_size);
 
   if(dma_set_mask_and_coherent(&dev->dev, DMA_BIT_MASK(64)) == 0) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_dma_64mask = 1;
@@ -130,7 +116,7 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_dma_64mask = 0;
   }
   else {
-    printk(KERN_ALERT "No usable DMA configuration\n");
+    printk(KERN_INFO "gpcieuni(%s): no usable DMA configuration\n", dev_name);
   }
 
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems = 0;
@@ -144,11 +130,11 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &irq_line);
   pci_read_config_byte(dev, PCI_INTERRUPT_PIN, &irq_pin);
 
-  printk(KERN_INFO "PCIEUNI_PROBE: VENDOR_ID  %i\n", vendor_id);
-  printk(KERN_INFO "PCIEUNI_PROBE: PCI_DEVICE_ID  %i\n", device_id);
-  printk(KERN_INFO "PCIEUNI_PROBE: PCI_SUBSYSTEM_VENDOR_ID  %i\n", subvendor_id);
-  printk(KERN_INFO "PCIEUNI_PROBE: PCI_SUBSYSTEM_ID  %i\n", subdevice_id);
-  printk(KERN_INFO "PCIEUNI_PROBE: PCI_CLASS_DEVICE  %i\n", class_code);
+  printk(KERN_INFO "gpcieuni(%s): VENDOR_ID  %i\n", dev_name, vendor_id);
+  printk(KERN_INFO "gpcieuni(%s): PCI_DEVICE_ID  %i\n", dev_name, device_id);
+  printk(KERN_INFO "gpcieuni(%s): PCI_SUBSYSTEM_VENDOR_ID  %i\n", dev_name, subvendor_id);
+  printk(KERN_INFO "gpcieuni(%s): PCI_SUBSYSTEM_ID  %i\n", dev_name, subdevice_id);
+  printk(KERN_INFO "gpcieuni(%s): PCI_CLASS_DEVICE  %i\n", dev_name, class_code);
 
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->vendor_id = vendor_id;
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->device_id = device_id;
@@ -168,15 +154,15 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base0_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base0 = pci_iomap(dev, 0, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI_PROBE: mem_region 0 address %X  SIZE %X FLAG %X\n", res_start, (res_end - res_start),
-        pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base0_flag);
+    printk(KERN_INFO "gpcieuni(%s): mem_region 0 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
+        (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base0_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off0 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems = 1;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base0 = 0;
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off0 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE0 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE0 address\n", dev_name);
   }
 
   res_start = pci_resource_start(dev, 1);
@@ -187,14 +173,15 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base1_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base1 = pci_iomap(dev, 1, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI: mem_region 1 address %X \n", res_start);
+    printk(KERN_INFO "gpcieuni(%s): mem_region 1 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
+        (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base1_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off1 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems += 2;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base1 = 0;
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off1 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE1 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE1 address\n", dev_name);
   }
 
   res_start = pci_resource_start(dev, 2);
@@ -205,13 +192,14 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base2_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base2 = pci_iomap(dev, 2, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI: mem_region 2 address %X \n", res_start);
+    printk(KERN_INFO "gpcieuni(%s): mem_region 2 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
+        (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base2_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off2 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems += 4;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base2 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE2 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE2 address\n", dev_name);
   }
 
   res_start = pci_resource_start(dev, 3);
@@ -222,14 +210,14 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base3_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base3 = pci_iomap(dev, 3, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI: mem_region 3 address %X end %X SIZE %X FLAG %X\n", res_start, res_end,
+    printk(KERN_INFO "gpcieuni(%s): mem_region 3 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
         (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base3_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off3 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems += 8;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base3 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE3 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE3 address\n", dev_name);
   }
 
   res_start = pci_resource_start(dev, 4);
@@ -240,13 +228,14 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base4_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base4 = pci_iomap(dev, 4, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI: mem_region 4 address %X \n", res_start);
+    printk(KERN_INFO "gpcieuni(%s): mem_region 4 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
+        (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base4_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off4 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems += 16;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base4 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE4 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE4 address\n", dev_name);
   }
 
   res_start = pci_resource_start(dev, 5);
@@ -257,24 +246,23 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base5_flag = res_flag;
   if(res_start) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base5 = pci_iomap(dev, 5, (res_end - res_start));
-    printk(KERN_INFO "PCIEUNI: mem_region 5 address %X \n", res_start);
+    printk(KERN_INFO "gpcieuni(%s): mem_region 5 address %X  SIZE %X FLAG %X\n", dev_name, res_start,
+        (res_end - res_start), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->mem_base5_flag);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->rw_off5 = (res_end - res_start);
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems += 32;
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->memmory_base5 = 0;
-    printk(KERN_INFO "PCIEUNI: NO BASE5 address\n");
+    printk(KERN_INFO "gpcieuni(%s): NO BASE5 address\n", dev_name);
   }
   if(!pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_all_mems) {
-    printk(KERN_ALERT "PROBE ERROR NO BASE_MEMs\n");
+    printk(KERN_WARNING "PROBE ERROR NO BASE_MEMs\n");
   }
 
   /******GET BRD INFO******/
   tmp_info = pcieuni_get_brdinfo(pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]);
-  printk(KERN_ALERT "$$$$$$$$$$$$$PROBE  IS STARTUP BOARD %i\n", tmp_info);
   if(tmp_info) {
     tmp_info = pcieuni_get_prjinfo(pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]);
-    printk(KERN_ALERT "$$$$$$$$$$$$$PROBE  NUMBER OF PRJs %i\n", tmp_info);
   }
   /*******PREPARE INTERRUPTS******/
 
@@ -283,11 +271,9 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   if(pci_enable_msi(dev) == 0) {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->msi = 1;
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->irq_flag &= ~IRQF_SHARED;
-    printk(KERN_ALERT "MSI ENABLED\n");
   }
   else {
     pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->msi = 0;
-    printk(KERN_ALERT "MSI NOT SUPPORTED\n");
   }
 #endif
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pci_dev_irq = dev->irq;
@@ -302,8 +288,9 @@ int pcieuni_probe_exp(struct pci_dev* dev, const struct pci_device_id* id, struc
   pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->dev_sts = 1;
   sprintf(pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->name, "%ss%d", dev_name, tmp_slot_num);
   sprintf(prc_entr, "%ss%d", dev_name, tmp_slot_num);
-  printk(KERN_INFO "PCIEUNI_PROBE:  CREAT DEVICE MAJOR %i MINOR %i F_NAME %s\n", pcieuni_cdev_p->PCIEUNI_MAJOR,
-      (pcieuni_cdev_p->PCIEUNI_MINOR + m_brdNum), pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->name);
+  printk(KERN_INFO "gpcieuni(%s):  create device major %i minor %i f_name %s\n", dev_name,
+      pcieuni_cdev_p->PCIEUNI_MAJOR, (pcieuni_cdev_p->PCIEUNI_MINOR + m_brdNum),
+      pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->name);
   device_create(pcieuni_cdev_p->pcieuni_class, NULL,
       MKDEV(pcieuni_cdev_p->PCIEUNI_MAJOR, pcieuni_cdev_p->PCIEUNI_MINOR + m_brdNum),
       &pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->pcieuni_pci_dev->dev, pcieuni_cdev_p->pcieuni_dev_m[m_brdNum]->name);

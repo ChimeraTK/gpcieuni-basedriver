@@ -16,15 +16,11 @@ int pcieuni_remove_exp(struct pci_dev* dev, pcieuni_cdev* pcieuni_cdev_p, char* 
   pcieuni_file_list* tmp_file_list;
   struct list_head *fpos, *q;
 
-  printk(KERN_ALERT "PCIEUNI_REMOVE_EXP CALLED\n");
-
   pcieunidev = dev_get_drvdata(&(dev->dev));
   tmp_dev_num = pcieunidev->dev_num;
   tmp_slot_num = pcieunidev->slot_num;
   m_brdNum = pcieunidev->brd_num;
   *brd_num = tmp_slot_num;
-
-  printk(KERN_ALERT "PCIEUNI_REMOVE: SLOT %d DEV %d BOARD %i\n", tmp_slot_num, tmp_dev_num, m_brdNum);
 
   /* now let's be good and free the proj_info_list items. since we will be removing items
    * off the list using list_del() we need to use a safer version of the list_for_each()
@@ -37,24 +33,18 @@ int pcieuni_remove_exp(struct pci_dev* dev, pcieuni_cdev* pcieuni_cdev_p, char* 
     kfree(tmp_prj_info_list);
   }
 
-  printk(KERN_ALERT "REMOVING IRQ_MODE %d\n", pcieunidev->irq_mode);
   if(pcieunidev->irq_mode) {
-    printk(KERN_ALERT "FREE IRQ\n");
     free_irq(pcieunidev->pci_dev_irq, pcieunidev);
-    printk(KERN_ALERT "REMOVING IRQ\n");
     if(pcieunidev->msi) {
-      printk(KERN_ALERT "DISABLE MSI\n");
       pci_disable_msi((pcieunidev->pcieuni_pci_dev));
     }
   }
   else {
     if(pcieunidev->msi) {
-      printk(KERN_ALERT "DISABLE MSI\n");
       pci_disable_msi((pcieunidev->pcieuni_pci_dev));
     }
   }
 
-  printk(KERN_ALERT "REMOVE: UNMAPPING MEMORYs\n");
   // We cannot use mutex_lock_interrutible here. We are in the middle of tearing down the
   // structure, which cannot safely be interrupted here. Use mutex_lock.
   mutex_lock(&pcieunidev->dev_mut);
@@ -110,7 +100,7 @@ int pcieuni_remove_exp(struct pci_dev* dev, pcieuni_cdev* pcieuni_cdev_p, char* 
 
   pci_release_regions((pcieunidev->pcieuni_pci_dev));
 
-  printk(KERN_INFO "PCIEUNI_REMOVE:  DESTROY DEVICE MAJOR %i MINOR %i\n", pcieuni_cdev_p->PCIEUNI_MAJOR,
+  printk(KERN_INFO "gpcieuni(%s):  destroy device major %i minor %i\n", dev_name, pcieuni_cdev_p->PCIEUNI_MAJOR,
       (pcieuni_cdev_p->PCIEUNI_MINOR + pcieunidev->brd_num));
 
   device_destroy(pcieuni_cdev_p->pcieuni_class,
@@ -123,16 +113,12 @@ int pcieuni_remove_exp(struct pci_dev* dev, pcieuni_cdev* pcieuni_cdev_p, char* 
   pcieuni_cdev_p->pcieuniModuleNum--;
   pci_disable_device(dev);
 
-  printk(KERN_ALERT "LIST FOR EACH ENTRY START\n");
   list_for_each_safe(fpos, q, &(pcieunidev->dev_file_list.node_file_list)) {
     tmp_file_list = list_entry(fpos, pcieuni_file_list, node_file_list);
-    printk(KERN_ALERT "FILE_REF %i FILE_P %p\n", tmp_file_list->file_cnt, tmp_file_list->filp);
     tmp_file_list->filp->private_data = pcieuni_cdev_p->pcieuni_dev_m[PCIEUNI_NR_DEVS];
-    printk(KERN_ALERT "DELETING FILE_LIST FILE_REF %i FILE_P %p\n", tmp_file_list->file_cnt, tmp_file_list->filp);
     list_del(fpos);
     kfree(tmp_file_list);
   }
-  printk(KERN_ALERT "LIST FOR EACH ENTRY END\n");
 
   mutex_unlock(&pcieunidev->dev_mut);
   return 0;

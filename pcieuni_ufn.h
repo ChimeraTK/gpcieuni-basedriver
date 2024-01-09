@@ -35,7 +35,7 @@
  */
 #undef PDEBUG
 #ifdef PCIEUNI_DEBUG
-#  define PDEBUG(ctx, fmt, args...) printk(KERN_INFO "PCIEUNI(%s): " fmt, ctx, ##args)
+#  define PDEBUG(ctx, fmt, args...) printk(KERN_INFO "gpcieuni(%s): " fmt, ctx, ##args)
 #else
 #  define PDEBUG(ctx, fmt, args...)
 #endif
@@ -46,7 +46,7 @@
     struct timeval currentTime;                                                                                        \
     do_gettimeofday(&currentTime);                                                                                     \
     if(currentTime.tv_usec % cnt == 0) {                                                                               \
-      printk(KERN_ALERT msg);                                                                                          \
+      printk(KERN_DEBUG msg);                                                                                          \
       return ret;                                                                                                      \
     }                                                                                                                  \
   }
