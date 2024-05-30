@@ -8,6 +8,7 @@
 
 #include <linux/sched.h>
 #include <linux/types.h>
+#include <linux/wait.h>
 
 struct pcieuni_dev;
 
