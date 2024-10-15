@@ -4,7 +4,7 @@
 
 MODULE_AUTHOR("Ludwig Petrosyan, Tomasz Susnik, Jure Krasna, Martin Killenberg");
 MODULE_DESCRIPTION("Generic base part of the universal PCIe driver pcieuni");
-MODULE_VERSION("@GPCIEUNI_PACKAGE_VERSION@");
+MODULE_VERSION("@CMAKE_PROJECT_VERSION@");
 MODULE_LICENSE("Dual BSD/GPL");
 
 static void __exit pcieuni_cleanup_module(void) {
