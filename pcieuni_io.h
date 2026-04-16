@@ -5,10 +5,6 @@
 #include <linux/types.h>
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
-#  include <linux/time.h>
-#endif
-
 #define PCIEUNI_DMA_SYZE 4096
 
 struct device_ioctrl_data {
@@ -29,19 +25,12 @@ struct device_ioctrl_dma {
 };
 typedef struct device_ioctrl_dma device_ioctrl_dma;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
-
-typedef struct timeval pcieuni_timeval;
-
-#else
-
 struct pcieuni_timeval {
   long long tv_sec;
   long long tv_usec;
 };
 
 typedef struct pcieuni_timeval pcieuni_timeval;
-#endif
 
 struct device_ioctrl_time {
   pcieuni_timeval start_time;
