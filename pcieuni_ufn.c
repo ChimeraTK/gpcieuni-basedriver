@@ -44,10 +44,10 @@ int pcieuni_init_module_exp(pcieuni_cdev** pcieuni_cdev_pp, struct file_operatio
 
   /*Get module driver version information*/
   pcieuni_cdev_p->GPCIEUNI_VER_MAJ = simple_strtol(THIS_MODULE->version, endptr, 10);
-  pcieuni_cdev_p->GPCIEUNI_VER_MIN = simple_strtol(THIS_MODULE->version + 2, endptr, 10);
+  pcieuni_cdev_p->GPCIEUNI_VER_MIN = simple_strtol(THIS_MODULE->version + 3, endptr, 10);
 
   pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ = simple_strtol(pcieuni_fops->owner->version, endptr, 10);
-  pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN = simple_strtol(pcieuni_fops->owner->version + 2, endptr, 10);
+  pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN = simple_strtol(pcieuni_fops->owner->version + 3, endptr, 10);
 
   printk(KERN_INFO "gpcieuni base version %i.%i, driver version %i.%i\n", pcieuni_cdev_p->GPCIEUNI_VER_MAJ,
       pcieuni_cdev_p->GPCIEUNI_VER_MIN, pcieuni_cdev_p->PCIEUNI_DRV_VER_MAJ, pcieuni_cdev_p->PCIEUNI_DRV_VER_MIN);
