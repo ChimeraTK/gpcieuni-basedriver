@@ -254,21 +254,11 @@ int pcieuni_setup_interrupt(irqreturn_t (*pcieuni_interrupt)(int, void*), pcieun
 void register_gpcieuni_proc(int num, char* dfn, pcieuni_dev* p_upcie_dev, pcieuni_cdev* p_upcie_cdev);
 void unregister_gpcieuni_proc(int num, char* dfn);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0)
-static const struct file_operations gpcieuni_proc_fops = {
-    .owner = THIS_MODULE,
-    .open = pcieuni_proc_open,
-    .read = seq_read,
-    .llseek = seq_lseek,
-    .release = single_release,
-};
-#else
 static const struct proc_ops gpcieuni_proc_fops = {
     .proc_open = pcieuni_proc_open,
     .proc_read = seq_read,
     .proc_lseek = seq_lseek,
     .proc_release = single_release,
 };
-#endif /* KERNEL_VERSION(5,6,0) */
 
 #endif /* PCIEUNI_UFN_H */
