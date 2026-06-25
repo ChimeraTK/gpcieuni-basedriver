@@ -3,7 +3,9 @@ gpcieuni-objs := gpcieuni_drv.o pcieuni_ufn.o pcieuni_probe_exp.o \
 obj-m := gpcieuni.o
 
 #build for the running kernel
-KVERSION = $(shell uname -r)
+ifndef KVERSION
+KVERSION ?= $(shell uname -r)
+endif
 
 ccflags-y = -Wall -Wuninitialized
 
